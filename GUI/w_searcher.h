@@ -1,9 +1,6 @@
 #ifndef SEARCHER_H
 #define SEARCHER_H
 
-#include "FileData/filedata.h"
-#include "Components/searchresultlist.h"
-
 #include <windows.h>
 #include <QtWidgets/QWidget>
 #include <QVBoxLayout>
@@ -12,6 +9,9 @@
 #include <QScreen>
 #include <QDebug>
 #include <QKeyEvent>
+
+#include "FileData/file_data.h"
+#include "Components/search_result_list.h"
 
 
 class Searcher : public QWidget

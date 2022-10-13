@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(Manager VERSION 0.1 LANGUAGES CXX)
+project(Rotor VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -15,18 +15,16 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
 set(PROJECT_SOURCES
-    Model/settingmodel.h Model/settingmodel.cpp
+    Model/setting_model.h Model/setting_model.cpp
     Utils/powerboot.h
     Utils/UAC.h
-    GUI/Components/searchresultlist.h
-    GUI/Components/searchresultlist.cpp
+    GUI/Components/search_result_list.h
+    GUI/Components/search_result_list.cpp
     GUI/w_setting.h GUI/w_setting.cpp
     GUI/w_searcher.h GUI/w_searcher.cpp
-    GUI/Parents/w_normalwidget.h GUI/Parents/w_normalwidget.cpp
-    GUI/Parents/w_normalwindow.h GUI/Parents/w_normalwindow.cpp
-    FileData/filedata.h FileData/filedata.cpp
+    FileData/file_data.h FileData/file_data.cpp
     FileData/volume.h FileData/volume.cpp
-    manager.h manager.cpp
+    rotor.h rotor.cpp
     main.cpp
     resources.qrc
     appicon.rc
@@ -36,31 +34,31 @@ set(PROJECT_SOURCES
 #set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_CURRENT_SOURCE_DIR}/appicon.rc")
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(Manager
+    qt_add_executable(Rotor
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
     )
 # Define target properties for Android with Qt 6 as:
-#    set_property(TARGET Manager APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
+#    set_property(TARGET Rotor APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
 #                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
 # For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
 else()
     if(ANDROID)
-        add_library(Manager SHARED
+        add_library(Rotor SHARED
             ${PROJECT_SOURCES}
         )
 # Define properties for Android with Qt 5 after find_package() calls as:
 #    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
     else()
-        add_executable(Manager
+        add_executable(Rotor
             ${PROJECT_SOURCES}
         )
     endif()
 endif()
 
-target_link_libraries(Manager PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(Rotor PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 
-set_target_properties(Manager PROPERTIES
+set_target_properties(Rotor PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
@@ -69,5 +67,5 @@ set_target_properties(Manager PROPERTIES
 )
 
 if(QT_VERSION_MAJOR EQUAL 6)
-    qt_finalize_executable(Manager)
+    qt_finalize_executable(Rotor)
 endif()

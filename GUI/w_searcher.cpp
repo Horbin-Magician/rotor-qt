@@ -1,63 +1,54 @@
 #include "w_searcher.h"
 
 
-Searcher::Searcher(QWidget *parent): QWidget(parent)
-{
+Searcher::Searcher(QWidget *parent): QWidget(parent){
     m_fileData = nullptr;
     Searcher::initFileData();
     Searcher::initUI();
-    //注册热键
+    installEventFilter(this);
     RegisterHotKey((HWND)this->winId(),1,MOD_SHIFT, (UINT)0x46);
 }
 
-Searcher::~Searcher()
-{
-    //注销热键
+Searcher::~Searcher(){
     UnregisterHotKey((HWND)this->winId(),1);
 }
 
-void Searcher::show()
-{
+void Searcher::show(){
     QWidget::show();
     m_lineEdit->activateWindow();
     m_lineEdit->clear();
 }
 
-bool Searcher::eventFilter(QObject *obj, QEvent * event)
-{
-    if (Q_NULLPTR == obj) return false;
-    // 识别焦点丢失
-    if (QEvent::ActivationChange == event->type()) {
-        if(QApplication::activeWindow() != this){
-            this->hide();
-        }
+bool Searcher::eventFilter(QObject *obj, QEvent * event){
+    if (obj == Q_NULLPTR) return false;
+    // if lose focus
+    if (event->type() == QEvent::ActivationChange) {
+        if(QApplication::activeWindow() != this) this->hide();
     }
-    // 识别按键
-    if (event->type() == QEvent::KeyPress)
-    {
+    // if key press
+    if (event->type() == QEvent::KeyPress) {
        QKeyEvent *keyEvent = (QKeyEvent*)event;
-       if (keyEvent->key() == Qt::Key_Escape) this->hide();                                                   // 按下Esc时隐藏窗口
-       else if(keyEvent->key() == Qt::Key_Return) m_searchResultList->openCurrent();      // 按下Enter时打开文件
-       else if(keyEvent->key() == Qt::Key_Up) m_searchResultList->up();                            // 按下Up时上选文件
-       else if(keyEvent->key() == Qt::Key_Down) m_searchResultList->down();                   // 按下Down时下选文件
-   }
-   return false;
-
-
+       // Esc, hide
+       if (keyEvent->key() == Qt::Key_Escape) this->hide();
+       // Enter, open file
+       else if(keyEvent->key() == Qt::Key_Return) m_searchResultList->openCurrent();
+       // Up, previous file
+       else if(keyEvent->key() == Qt::Key_Up) m_searchResultList->up();
+       // Down, next file
+       else if(keyEvent->key() == Qt::Key_Down) m_searchResultList->down();
+    }
     return QWidget::eventFilter(obj, event);
 }
 
-bool Searcher::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
-{
+bool Searcher::nativeEvent(const QByteArray &eventType, void *message, qintptr *result){
     if(eventType == "windows_generic_MSG") {
          MSG *msg = static_cast<MSG *>(message);
          if(msg->message == WM_HOTKEY) {
-             //处理热键消息
+             // deal with hotkey
              UINT fuModifiers = (UINT) LOWORD(msg->lParam);
              UINT uVirtKey = (UINT) HIWORD(msg->lParam);
 
-             if(fuModifiers == MOD_SHIFT & uVirtKey == (UINT)0x46)
-             {
+             if(fuModifiers == MOD_SHIFT & uVirtKey == (UINT)0x46){
                  if(this->isVisible()) this->hide();
                  else this->show();
              }
@@ -66,16 +57,16 @@ bool Searcher::nativeEvent(const QByteArray &eventType, void *message, qintptr *
     return QWidget::nativeEvent(eventType, message, result);
 }
 
-void Searcher::initFileData()
-{
-    if(m_fileData) delete m_fileData;
+// init filedata and its volumes
+void Searcher::initFileData(){
+    if(m_fileData != nullptr && m_fileData->state != 2) return;
+    delete m_fileData;
     m_fileData = new FileData();
     m_fileData->initVolumes();
     connect(m_fileData, &FileData::updateSearchResult, this, &Searcher::onSearchResultUpdate);
 }
 
-void Searcher::initUI()
-{
+void Searcher::initUI(){
     setWindowFlags(Qt::FramelessWindowHint | Qt::Tool | Qt::WindowStaysOnTopHint | Qt::Popup);
 
     m_initialWidth = 570;
@@ -97,18 +88,15 @@ void Searcher::initUI()
     m_lineEdit->setContentsMargins(20, 0, 20, 0);
     m_lineEdit->setContextMenuPolicy(Qt::NoContextMenu);
     m_lineEdit->setStyleSheet("QLineEdit{font-size:28px; border:0px;}");
+    connect(m_lineEdit, &QLineEdit::textChanged, this, &Searcher::onTextChanged);//点击托盘，执行相应的动作
     m_layout->addWidget(m_lineEdit);
 
     m_searchResultList = new SearchResultList(this);
+    m_searchResultList->hide();
     m_layout->addWidget(m_searchResultList);
-
-    connect(m_lineEdit, &QLineEdit::textChanged, this, &Searcher::onTextChanged);//点击托盘，执行相应的动作
-    connect(m_fileData, &FileData::updateSearchResult, this, &Searcher::onSearchResultUpdate);
-    installEventFilter(this);
 }
 
-void Searcher::onTextChanged(const QString &text)
-{
+void Searcher::onTextChanged(const QString &text){
     if( text.isEmpty() ){
         setFixedHeight(m_initialHeight);
         m_searchResultList->hide();
@@ -117,11 +105,12 @@ void Searcher::onTextChanged(const QString &text)
     m_fileData->findFile(text);
 }
 
-void Searcher::onSearchResultUpdate(const QString filename, const vector<SearchResultFile> &filepaths)
-{
+void Searcher::onSearchResultUpdate(const QString filename, const vector<SearchResultFile> &filepaths){
     if(m_lineEdit->text() != filename) return;
     m_searchResultList->update(filepaths);
     setFixedHeight(m_initialHeight + m_searchResultList->height());
-    m_lineEdit->setStyleSheet(m_lineEdit->styleSheet() + "QLineEdit{border-bottom:1px solid rgb(180,180,180);}");
+
+    if(filepaths.empty()) m_lineEdit->setStyleSheet("QLineEdit{font-size:28px; border:0px;}");
+    else m_lineEdit->setStyleSheet(m_lineEdit->styleSheet() + "QLineEdit{border-bottom:1px solid rgb(180,180,180);}");
 }
 

@@ -1,8 +1,6 @@
 #ifndef VOLUME_H
 #define VOLUME_H
 
-#include "../Model/settingmodel.h"
-
 #include <QMap>
 #include <string>
 #include <Windows.h>
@@ -32,16 +30,8 @@ struct SearchResultFile
     wstring path;
     char rank;
 
-    bool operator<(const SearchResultFile& i)
-    {
+    bool operator<(const SearchResultFile& i){
         return rank > i.rank;
-    }
-
-    SearchResultFile()
-    {
-        filename = wstring();
-        path = wstring();
-        rank = 0;
     }
 };
 
@@ -64,9 +54,16 @@ class Volume {
 public:
     Volume(WCHAR cDrive);
     ~Volume();
-    int Find(wstring strQuery, vector<SearchResultFile> *rgsrfResults, int maxResults = 10000);
+    int Find(wstring strQuery, vector<SearchResultFile> *rgsrfResults, int maxResults = 5000);
     void BuildIndex();
+    void StopFind();
 private:
+    HANDLE      m_hVol;			// handle to volume
+    WCHAR       m_drive;		// drive letter of volume
+    DWORDLONG   m_driveFRN;     // drive FileReferenceNumber
+    FileMap     m_FileMap;
+    bool        m_StopFind;
+
     void CleanUp();
     BOOL ReleaseIndex();
     void ReduceIndex();
@@ -79,11 +76,6 @@ private:
 
     DWORDLONG MakeFilter(wstring *szName);
     char GetFileRank(wstring *filename);
-
-    HANDLE      m_hVol;			// handle to volume
-    WCHAR       m_drive;		// drive letter of volume
-    DWORDLONG   m_driveFRN;     // drive FileReferenceNumber
-    FileMap     m_FileMap;
 };
 
 #endif // VOLUME_H

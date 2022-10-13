@@ -1,11 +1,12 @@
 #include "w_setting.h"
+#include "Model/setting_model.h"
 
 Setting::Setting(QWidget *parent) : QWidget{parent}
 {
     this->initUI();
 }
 
-bool Setting::SwitchContent(short index)
+bool Setting::SwitchContent(const short index)
 {
     m_RightWidget->setCurrentIndex(index);
     return true;
@@ -17,31 +18,30 @@ void Setting::initUI()
     this->setMinimumWidth(800);
     this->setMinimumHeight(500);
 
-    m_MainLayout = new QHBoxLayout();
-    m_MainLayout->setSpacing(0);
-    this->setLayout(m_MainLayout);
-
+    // init left part
     m_LeftWidget = new QListWidget();
     m_LeftWidget->setFixedWidth(100);
     connect(m_LeftWidget, &QListWidget::currentRowChanged, this, &Setting::SwitchContent);
-
+    // init right part
     m_RightWidget = new QStackedWidget();
-
-    m_MainLayout->addWidget(m_LeftWidget);
-    m_MainLayout->addWidget(m_RightWidget);
-
     m_SettingNames = QList<QString>() << "常规" << "搜索";
-
-    for(int i = 0; i < m_SettingNames.size(); i++)
-    {
+    // add widgets to right widget by setting names
+    for(int i = 0; i < m_SettingNames.size(); i++){
         m_LeftWidget->addItem(m_SettingNames[i]);
         QWidget* settingWidget = new QWidget();
         QVBoxLayout* layout = new QVBoxLayout();
         settingWidget->setLayout(layout);
         m_RightWidget->addWidget(settingWidget);
     }
+    // init main part
+    m_MainLayout = new QHBoxLayout();
+    m_MainLayout->setSpacing(0);
+    this->setLayout(m_MainLayout);
+    m_MainLayout->addWidget(m_LeftWidget);
+    m_MainLayout->addWidget(m_RightWidget);
 
-    this->initSettingWidgets();
+    this->initSettingWidgets(); // init content of right part
+    // select default
     m_LeftWidget->setCurrentRow(0);
     this->SwitchContent(0);
 }
@@ -81,6 +81,6 @@ void Setting::initSettingWidgets()
             connect(resetButton, &QPushButton::clicked, [&](){emit rebuildIndex();});
             widget->layout()->addWidget(resetButton);
         }
-        ((QBoxLayout*)widget->layout())->addStretch();
+        ( (QBoxLayout*)( widget->layout() ) )->addStretch();
     }
 }

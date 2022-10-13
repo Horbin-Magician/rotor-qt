@@ -1,21 +1,19 @@
-<README in English provided by Horbin>
-
 # Introduce
 
-This is a "**fast**", "**low occupancy**" and **free** **tools box** running in windows. (Double quotes because it is far from the goal)
+Rotor is a "**fast**", "**low occupancy**" and **free** **tools box** running in windows. (Double quotes because it is far from the goal)
 
-The plan is that Manager will include an Everything-like **global file search** function, a **screenshot** function, and a dictionary function. But for now, there is only not bad file search function.
+The plan is that Rotor will include an Everything-like **global file search** function, a **screenshot** function, and a dictionary function. But for now, there is only not bad file search function.
 
 Admittedly, there are already many similar products, and most of them do better, but they still have some problems.
 
-Most importantly, Manager is an open source software!
+Most importantly, Rotor is an open source software!
 
 ## File Searching
 
 1. The shortcut key to show the search window is Shift+F, which is not yet customizable.
 2. Next, enter any information in the search window to get the search results immediately.
 3. Up and down keys to select the result, enter key to open the file. 
-4. Right-click the result item will open the right-click menu, which currently only provides the function of opening the directory where the file is located.
+4. Right-clicking the result item will open a right-click menu, which currently only provides the function of opening the directory where the file is located.
 
 ## Screenshot
 
@@ -36,8 +34,6 @@ I sincerely hope that you can provide quality code for this project, and I hope 
 [MIT](https://opensource.org/licenses/MIT)
 
 ---
-
-<README in Chinese provided by Horbin>
 
 # 简介
 

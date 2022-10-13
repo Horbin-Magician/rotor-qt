@@ -1,33 +1,34 @@
-#include "Utils/UAC.h"
-#include "Model/settingmodel.h"
-#include "manager.h"
-
 #include <QApplication>
 #include <windows.h>
 
-bool checkOnly()
+#include "Utils/UAC.h"
+#include "rotor.h"
+
+// return: true, if already run a Rotor
+bool checkAreadyRun()
 {
-    //创建互斥量
-    HANDLE m_hMutex  =  CreateMutex(NULL, FALSE,  L"Manager" );
-    //检查错误代码
+    // create mutex
+    HANDLE m_hMutex = CreateMutex(NULL, FALSE,  L"Manager" );
+    // if get already_exists error, return true
     if(GetLastError() == ERROR_ALREADY_EXISTS){
         CloseHandle(m_hMutex);
-        return  false;
-    }
-    else
         return true;
+    }
+    return false;
 }
 
+// entrance of total programe
 int main(int argc, char *argv[])
 {
-    QApplication app(argc, argv); // 初始化Application
+    // check
+    if ( checkAreadyRun() | UAC::runAsAdmin() ) return 0;
+
+    // init Application
+    QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
 
-    if(!checkOnly() | UAC::runAsAdmin()) return 0; //检查是否已启动，并以管理员权限启动一个新实例
+    Rotor& rotor = Rotor::getInstance();
 
-    Manager& manager = Manager::getInstance();
-    Manager::getInstance();
-    SettingModel& settingModel = SettingModel::getInstance();
 
     return app.exec();
 }

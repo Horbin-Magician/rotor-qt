@@ -1,15 +1,16 @@
 #include "FileData/volume.h"
 
-#include <windows.h>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <QDebug>
 
+#include "Model/setting_model.h"
 
 // Constructor
 Volume::Volume(WCHAR drive)
 {
+    m_StopFind = false;
     // Initialize member variables
     m_drive = drive; // drive letter of volume
     m_driveFRN = 0x5000000000005; // drive FileReferenceNumber
@@ -41,8 +42,7 @@ BOOL Volume::ReleaseIndex()
 }
 
 // This is a helper function that opens a handle to the volume specified by the cDriveLetter parameter.
-HANDLE Volume::Open(TCHAR cDriveLetter, DWORD dwAccess)
-{
+HANDLE Volume::Open(TCHAR cDriveLetter, DWORD dwAccess){
     TCHAR szVolumePath[_MAX_PATH];
     wsprintf(szVolumePath, TEXT("\\\\.\\%c:"), cDriveLetter);
     HANDLE hCJ = CreateFile(szVolumePath, dwAccess, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
@@ -50,16 +50,14 @@ HANDLE Volume::Open(TCHAR cDriveLetter, DWORD dwAccess)
 }
 
 // Return statistics about the journal on the current volume
-BOOL Volume::Query(PUSN_JOURNAL_DATA pUsnJournalData)
-{
+BOOL Volume::Query(PUSN_JOURNAL_DATA pUsnJournalData){
     DWORD cb;
     BOOL fOk = DeviceIoControl(m_hVol, FSCTL_QUERY_USN_JOURNAL, NULL, 0, pUsnJournalData, sizeof(*pUsnJournalData), &cb, NULL);
     return(fOk);
 }
 
 // Enumerate the MFT for all entries. Store the file reference numbers of any directories in the database.
-void Volume::BuildIndex()
-{
+void Volume::BuildIndex(){
     ReleaseIndex();
 
     USN_JOURNAL_DATA ujd;
@@ -77,11 +75,9 @@ void Volume::BuildIndex()
 
     BYTE pData[sizeof(DWORDLONG) * 0x10000];
     DWORD cb;
-    while (DeviceIoControl(m_hVol, FSCTL_ENUM_USN_DATA, &med, sizeof(med), pData, sizeof(pData), &cb, NULL) != FALSE)
-    {
+    while (DeviceIoControl(m_hVol, FSCTL_ENUM_USN_DATA, &med, sizeof(med), pData, sizeof(pData), &cb, NULL) != FALSE){
         PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
-        while ((PBYTE) pRecord < (pData + cb))
-        {
+        while ((PBYTE) pRecord < (pData + cb)){
             wstring sz((LPCWSTR) ((PBYTE) pRecord + pRecord->FileNameOffset), pRecord->FileNameLength / sizeof(WCHAR));
             AddFile(pRecord->FileReferenceNumber, sz, pRecord->ParentFileReferenceNumber);
             pRecord = (PUSN_RECORD) ((PBYTE) pRecord + pRecord->RecordLength);
@@ -92,9 +88,12 @@ void Volume::BuildIndex()
     ReduceIndex();
 }
 
+void Volume::StopFind(){
+    m_StopFind = true;
+}
+
 // Delete ignored and useless index
-void Volume::ReduceIndex()
-{
+void Volume::ReduceIndex(){
     SettingModel& settingModel = SettingModel::getInstance();
     QStringList ignoredPathList = settingModel.getIgnoredPath();
 
@@ -115,11 +114,10 @@ void Volume::ReduceIndex()
             }
         }
         if(ifFound)it = m_FileMap.erase(it);
-        else it++;
+        else ++it;
     }
 
-    for(FileMap::iterator it = m_FileMap.begin();it != m_FileMap.end();)
-    {
+    for(FileMap::iterator it = m_FileMap.begin();it != m_FileMap.end();){
         // del file with ignored path or useless
         wstring path;
         if(GetPath(it->parentIndex, &path) == FALSE){
@@ -131,8 +129,7 @@ void Volume::ReduceIndex()
 }
 
 // Adds a file to the database
-BOOL Volume::AddFile(DWORDLONG index, wstring filename, DWORDLONG parentIndex)
-{
+BOOL Volume::AddFile(DWORDLONG index, wstring filename, DWORDLONG parentIndex){
     DWORDLONG filter = MakeFilter(&filename);
     char rank = GetFileRank(&filename);
     File insertFile(parentIndex, filename, filter, rank);
@@ -180,11 +177,11 @@ DWORDLONG Volume::MakeFilter(wstring *szName)
     DWORDLONG Address = 0;
     WCHAR c;
     wstring szlower(*szName);
-    for(unsigned int j = 0; j != szlower.length(); j++) szlower[j] = tolower(szlower[j]);
+    for(unsigned int j = 0; j != szlower.length(); ++j) szlower[j] = tolower(szlower[j]);
 
     int counts[26] = {0}; //This array is used to check if characters occur two or three times in the string
     wstring::size_type l = szlower.length();
-    for(unsigned int i = 0; i != l; i++)
+    for(unsigned int i = 0; i != l; ++i)
     {
         c = szlower[i];
         if(c > 96 && c < 123) //a-z
@@ -221,7 +218,7 @@ DWORDLONG Volume::MakeFilter(wstring *szName)
         else if(c == L'!' || c == L'#' || c == L'$' || c == L'&' || c == L'\'' || c == L'(' || c == L')' || c == L'+' || c == L',' || c == L'-' || c == L'~' || c == L'_')
             Address |= (uint64_t)1 << 38; // !#$&'()+,-~_
     }
-    for(unsigned int i = 0; i < 26; i++)
+    for(unsigned int i = 0; i < 26; ++i)
     {
         if(counts[i] >= 2) Address |= (uint64_t)1 << 39;
         if(counts[i] >= 3) Address |= (uint64_t)1 << 40;
@@ -232,13 +229,12 @@ DWORDLONG Volume::MakeFilter(wstring *szName)
 }
 
 // searching
-int Volume::Find(wstring strQuery, vector<SearchResultFile> *rgsrfResults, int maxResults)
-{
-    int nResults = 0; //Number of results in this search. -1 if more than maximum number of results.
+int Volume::Find(wstring strQuery, vector<SearchResultFile> *rgsrfResults, int maxResults){
+    int nResults = 0; //Number of results in this search.
     if(strQuery.length() == 0) return nResults; //No query, just ignore this call
 
     //Create lower query string for case-insensitive search
-    for(unsigned int j = 0; j != strQuery.length(); j++)
+    for(unsigned int j = 0; j != strQuery.length(); ++j)
         strQuery[j] = tolower(strQuery[j]);
 
     //Calculate Filter value and length of the current query which are compared with the cached ones to skip many of them
@@ -246,28 +242,24 @@ int Volume::Find(wstring strQuery, vector<SearchResultFile> *rgsrfResults, int m
     DWORDLONG queryLength = (queryFilter & (uint64_t)0xE000000000000000) >> (uint64_t)61; //Bits 61-63 for storing lengths up to 8
     queryFilter = queryFilter & (uint64_t)0x1FFFFFFFFFFFFFFF; //All but the last 3 bits
 
-    for(QMap<DWORDLONG, File>::iterator it = m_FileMap.begin();it != m_FileMap.end();it++)
-    {
+    for(QMap<DWORDLONG, File>::iterator it = m_FileMap.begin(); it != m_FileMap.end(); ++it){
+        if(m_StopFind){
+            m_StopFind = false;
+            return -1;
+        }
         DWORDLONG length = (it->filter & (uint64_t)0xE000000000000000) >> (uint64_t)61; //Bits 61-63 for storing lengths up to 8
         DWORDLONG filter = it->filter & (uint64_t)0x1FFFFFFFFFFFFFFF; //All but the last 3 bits
 
-        if((filter & queryFilter) == queryFilter && queryLength <= length)
-        {
+        if((filter & queryFilter) == queryFilter && queryLength <= length){
             wstring szLower = it->filename;
-            for(unsigned int j = 0; j != szLower.length(); j++)
+            for(unsigned int j = 0; j != szLower.length(); ++j)
                 szLower[j] = tolower(szLower[j]);
-            if(szLower.find(strQuery) != -1)
-            {
+            if(szLower.find(strQuery) != -1){
                 nResults++;
-                if(maxResults != -1 && nResults > maxResults)
-                {
-                    nResults = -1;
-                    break;
-                }
+                if(maxResults != -1 && nResults > maxResults)break;
                 SearchResultFile srf;
                 srf.path.reserve(MAX_PATH);
-                if(GetPath(it->parentIndex, &srf.path))
-                {
+                if(GetPath(it->parentIndex, &srf.path)){
                     srf.filename = it->filename;
                     srf.rank = it->rank;
                     rgsrfResults->insert(rgsrfResults->end(), srf);
