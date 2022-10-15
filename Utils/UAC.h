@@ -16,9 +16,7 @@ public:
     {
         if (IsUserAnAdmin()) return false;
 
-        QStringList args = QCoreApplication::arguments();
         QString filePath = QCoreApplication::applicationFilePath();
-
         std::wstring temp=filePath.toStdWString();
         LPCWSTR filePath_w = temp.c_str();
 

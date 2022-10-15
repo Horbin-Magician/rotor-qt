@@ -15,19 +15,23 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
 set(PROJECT_SOURCES
-    Model/setting_model.h Model/setting_model.cpp
     Utils/powerboot.h
     Utils/UAC.h
-    GUI/Components/search_result_list.h
-    GUI/Components/search_result_list.cpp
+
+    Models/setting_model.h Models/setting_model.cpp
     GUI/w_setting.h GUI/w_setting.cpp
-    GUI/w_searcher.h GUI/w_searcher.cpp
-    FileData/file_data.h FileData/file_data.cpp
-    FileData/volume.h FileData/volume.cpp
     rotor.h rotor.cpp
     main.cpp
     resources.qrc
     appicon.rc
+
+    Modules/Searcher/GUI/Components/search_result_list.h Modules/Searcher/GUI/Components/search_result_list.cpp
+    Modules/Searcher/GUI/w_searcher.h Modules/Searcher/GUI/w_searcher.cpp
+    Modules/Searcher/FileData/file_data.h Modules/Searcher/FileData/file_data.cpp
+    Modules/Searcher/FileData/volume.h Modules/Searcher/FileData/volume.cpp
+    Modules/searcher.h Modules/searcher.cpp
+
+    Modules/ScreenShotter/screen_shotter.h Modules/ScreenShotter/screen_shotter.cpp
 )
 
 # add icon

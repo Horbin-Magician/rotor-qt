@@ -5,13 +5,15 @@
 #include "rotor.h"
 
 // return: true, if already run a Rotor
-bool checkAreadyRun()
+bool checkAreadyRun(HANDLE &hMutex)
 {
     // create mutex
-    HANDLE m_hMutex = CreateMutex(NULL, FALSE,  L"Manager" );
+    hMutex = CreateMutex(NULL, FALSE,  L"Rotor" );
     // if get already_exists error, return true
     if(GetLastError() == ERROR_ALREADY_EXISTS){
-        CloseHandle(m_hMutex);
+        CloseHandle(hMutex);
+        hMutex = NULL;
+        MessageBox(NULL, L"一山二虎！", L"提示", MB_OK);
         return true;
     }
     return false;
@@ -20,15 +22,22 @@ bool checkAreadyRun()
 // entrance of total programe
 int main(int argc, char *argv[])
 {
-    // check
-    if ( checkAreadyRun() | UAC::runAsAdmin() ) return 0;
-
     // init Application
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
 
-    Rotor& rotor = Rotor::getInstance();
+    // check
+    HANDLE hMutex = NULL;
+    if ( checkAreadyRun(hMutex) | UAC::runAsAdmin() ) {
+        if(hMutex != NULL){
+            ReleaseMutex(hMutex);
+            CloseHandle(hMutex);
+        }
+        return 0;
+    }
 
+    // init Rotor
+    Rotor& rotor = Rotor::getInstance();
 
     return app.exec();
 }

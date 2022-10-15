@@ -1,5 +1,5 @@
 #include "w_setting.h"
-#include "Model/setting_model.h"
+#include "Models/setting_model.h"
 
 Setting::Setting(QWidget *parent) : QWidget{parent}
 {

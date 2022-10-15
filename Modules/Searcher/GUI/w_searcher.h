@@ -10,7 +10,7 @@
 #include <QDebug>
 #include <QKeyEvent>
 
-#include "FileData/file_data.h"
+#include "../FileData/file_data.h"
 #include "Components/search_result_list.h"
 
 

@@ -1,5 +1,5 @@
 #include "rotor.h"
-#include "Model/setting_model.h"
+#include "Models/setting_model.h"
 
 // return: instance of Rotor
 Rotor& Rotor::getInstance()

@@ -5,7 +5,7 @@
 #include <QMenu>
 #include <QApplication>
 
-#include "GUI/w_searcher.h"
+#include "Modules/Searcher/GUI/w_searcher.h"
 #include "GUI/w_setting.h"
 
 // the main class of Rotor, control all the programe

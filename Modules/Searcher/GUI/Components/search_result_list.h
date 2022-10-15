@@ -14,7 +14,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 
-#include "FileData/volume.h"
+#include "../../FileData/volume.h"
 
 class SearchResultItemWidget: public QWidget
 {

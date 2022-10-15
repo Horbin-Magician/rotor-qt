@@ -1,11 +1,11 @@
-#include "FileData/volume.h"
+#include "volume.h"
 
 #include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <QDebug>
 
-#include "Model/setting_model.h"
+#include "Models/setting_model.h"
 
 // Constructor
 Volume::Volume(WCHAR drive)
