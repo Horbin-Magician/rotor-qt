@@ -13,7 +13,7 @@ bool checkAreadyRun(HANDLE &hMutex)
     if(GetLastError() == ERROR_ALREADY_EXISTS){
         CloseHandle(hMutex);
         hMutex = NULL;
-        MessageBox(NULL, L"一山二虎！", L"提示", MB_OK);
+        MessageBox(NULL, L"一山不容二虎！", L"提示", MB_OK);
         return true;
     }
     return false;

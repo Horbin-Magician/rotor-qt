@@ -6,6 +6,7 @@
 #include <QApplication>
 
 #include "Modules/Searcher/GUI/w_searcher.h"
+#include "Modules/ScreenShotter/screen_shotter.h"
 #include "GUI/w_setting.h"
 
 // the main class of Rotor, control all the programe
@@ -22,7 +23,9 @@ private:
     void activeTray(QSystemTrayIcon::ActivationReason reason);
 
     QMenu* m_menu;
-    Searcher* m_searcher; // searcher window
+    Searcher* m_searcher; // searcher module
+    ScreenShotter* m_screenShotter; // screen_shtter module
+
     Setting* m_setting; // setting window
 };
 #endif // SYSTEMTRAY_H

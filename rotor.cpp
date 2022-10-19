@@ -18,6 +18,8 @@ Rotor::Rotor(QObject *parent)
     SettingModel& settingModel = SettingModel::getInstance();
 
     m_searcher = new Searcher();
+    m_screenShotter = new ScreenShotter();
+
     m_setting = new Setting();
     connect(m_setting, &Setting::rebuildIndex, m_searcher, &Searcher::initFileData);
 
@@ -27,7 +29,7 @@ Rotor::Rotor(QObject *parent)
 
     this->setContextMenu(m_menu);
     this->setIcon(QIcon(":/picture/Resources/favicon.ico"));
-    this->setToolTip("小云管家\n搜索：Shift+F"); // TODO: auto edit the tips
+    this->setToolTip("小云管家\n搜索：Shift+F\n截图：F1"); // TODO: auto edit the tips
     connect(this, &QSystemTrayIcon::activated, this, &Rotor::activeTray); // combine activated event
 
     this->show();

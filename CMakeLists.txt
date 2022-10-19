@@ -29,9 +29,11 @@ set(PROJECT_SOURCES
     Modules/Searcher/GUI/w_searcher.h Modules/Searcher/GUI/w_searcher.cpp
     Modules/Searcher/FileData/file_data.h Modules/Searcher/FileData/file_data.cpp
     Modules/Searcher/FileData/volume.h Modules/Searcher/FileData/volume.cpp
-    Modules/searcher.h Modules/searcher.cpp
+    Modules/Searcher/searcher.h Modules/Searcher/searcher.cpp
 
     Modules/ScreenShotter/screen_shotter.h Modules/ScreenShotter/screen_shotter.cpp
+    Modules/ScreenShotter/Components/amplifier.h Modules/ScreenShotter/Components/amplifier.cpp
+    Modules/ScreenShotter/Components/shotter_screen.h Modules/ScreenShotter/Components/shotter_screen.cpp
 )
 
 # add icon
