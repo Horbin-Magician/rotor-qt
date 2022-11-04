@@ -56,6 +56,7 @@ public:
     ~Volume();
     int Find(wstring strQuery, vector<SearchResultFile> *rgsrfResults, int maxResults = 5000);
     void BuildIndex();
+    void UpdateIndex();
     void StopFind();
 private:
     HANDLE      m_hVol;			// handle to volume
@@ -63,6 +64,7 @@ private:
     DWORDLONG   m_driveFRN;     // drive FileReferenceNumber
     FileMap     m_FileMap;
     bool        m_StopFind;
+    USN         m_StartUSN;
 
     void CleanUp();
     BOOL ReleaseIndex();

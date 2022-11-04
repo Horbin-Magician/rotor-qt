@@ -14,15 +14,17 @@
 #include <QHBoxLayout>
 #include <QLabel>
 
-#include "../../FileData/volume.h"
+#include "../FileData/volume.h"
 
 class SearchResultItemWidget: public QWidget
 {
     Q_OBJECT
 public:
-    SearchResultItemWidget(QFileInfo fileInfo);
-    void update(QFileInfo fileInfo);
+    SearchResultItemWidget(QFileInfo &fileInfo);
+    void update(QFileInfo &fileInfo);
 private:
+    QFileIconProvider m_iconProvider;
+    QPixmap m_pixmap;
     QLabel* m_icon;
     QLabel* m_titleLabel;
     QLabel* m_subLabel;

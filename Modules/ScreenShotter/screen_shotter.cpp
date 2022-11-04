@@ -27,13 +27,12 @@ ScreenShotter::ScreenShotter(QWidget *parent) : QWidget(parent)
     m_scaleRate = QGuiApplication::primaryScreen()->devicePixelRatio();
 
     initWindow(); // 初始化窗口
-
-    RegisterHotKey((HWND)this->winId(),1, 0, (UINT)0x70); // 注册快捷键
 }
 
-// 析构函数，释放快捷键
-ScreenShotter::~ScreenShotter(void) {
-    UnregisterHotKey((HWND)this->winId(),1); // 释放快捷键
+void ScreenShotter::onHotkey()
+{
+    if(m_state == 1)return;
+    Shot();
 }
 
 // 开始截图
@@ -46,22 +45,6 @@ void ScreenShotter::Shot()
     updateMouseWindow(); // 更新鼠标区域窗口
     show(); // 展示窗口
     this->setFocus();
-}
-
-bool ScreenShotter::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
-{
-    if(eventType == "windows_generic_MSG") {
-        MSG *msg = static_cast<MSG *>(message);
-        if(msg->message == WM_HOTKEY) {
-            // deal with hotkey
-            UINT fuModifiers = (UINT) LOWORD(msg->lParam);
-            UINT uVirtKey = (UINT) HIWORD(msg->lParam);
-            if(fuModifiers == (UINT)0 && uVirtKey == (UINT)0x70){
-                this->Shot();
-            }
-        }
-    }
-    return QWidget::nativeEvent(eventType, message, result);
 }
 
 // 捕获屏幕
@@ -116,8 +99,7 @@ void ScreenShotter::updateMouseWindow()
 // 初始化窗口
 void ScreenShotter::initWindow()
 {
-    setWindowFlags(Qt::FramelessWindowHint | Qt::SubWindow);
-    showFullScreen(); // 全屏窗口
+    setWindowFlags(Qt::FramelessWindowHint | Qt::SubWindow | Qt::WindowStaysOnTopHint);
     setGeometry(m_desktopRect); // 窗口与显示屏对齐
     setMouseTracking(true); // 开启鼠标实时追踪
     hide();

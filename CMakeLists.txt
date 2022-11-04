@@ -17,6 +17,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 set(PROJECT_SOURCES
     Utils/powerboot.h
     Utils/UAC.h
+    Utils/hotkey.h
 
     Models/setting_model.h Models/setting_model.cpp
     GUI/w_setting.h GUI/w_setting.cpp
@@ -25,11 +26,12 @@ set(PROJECT_SOURCES
     resources.qrc
     appicon.rc
 
-    Modules/Searcher/GUI/Components/search_result_list.h Modules/Searcher/GUI/Components/search_result_list.cpp
-    Modules/Searcher/GUI/w_searcher.h Modules/Searcher/GUI/w_searcher.cpp
+    Modules/i_module.h
+
+    Modules/Searcher/Components/search_result_list.h Modules/Searcher/Components/search_result_list.cpp
+    Modules/Searcher/searcher.h Modules/Searcher/searcher.cpp
     Modules/Searcher/FileData/file_data.h Modules/Searcher/FileData/file_data.cpp
     Modules/Searcher/FileData/volume.h Modules/Searcher/FileData/volume.cpp
-    Modules/Searcher/searcher.h Modules/Searcher/searcher.cpp
 
     Modules/ScreenShotter/screen_shotter.h Modules/ScreenShotter/screen_shotter.cpp
     Modules/ScreenShotter/Components/amplifier.h Modules/ScreenShotter/Components/amplifier.cpp

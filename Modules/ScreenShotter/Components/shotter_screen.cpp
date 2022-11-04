@@ -2,17 +2,17 @@
 
 #include <QMenu>
 #include <QMouseEvent>
-
 #include <QApplication>
 #include <QFileDialog>
 #include <QClipboard>
 #include <QDateTime>
 #include <QPainter>
+#include <windows.h>
 
 
 ShotterScreen::ShotterScreen(std::shared_ptr<QPixmap> originPainting, QRect windowRect, QWidget *parent):QWidget(parent)
 {
-    setWindowFlags(Qt::FramelessWindowHint | Qt::SubWindow | Qt::WindowStaysOnTopHint); // 设置成无边框对话框
+    setWindowFlags(Qt::FramelessWindowHint | Qt::SubWindow | Qt::WindowStaysOnTopHint);
 
     m_originPainting = originPainting->copy();
     m_isPressed = false;
@@ -21,8 +21,9 @@ ShotterScreen::ShotterScreen(std::shared_ptr<QPixmap> originPainting, QRect wind
     m_zoom = 1;
 
     m_menu = new QMenu(this);
-    m_menu->addAction(QStringLiteral("完成截图"), this, SLOT(onSaveScreen()));
+    m_menu->addAction(QStringLiteral("复制截图"), this, SLOT(onSaveScreen()));
     m_menu->addAction(QStringLiteral("保存"), this, SLOT(onSaveScreenOther()));
+    m_menu->addAction(QStringLiteral("最小化"), this, SLOT(minimize()));
     m_menu->addAction(QStringLiteral("退出截图"), this, SLOT(quitScreenshot()));
 
     setGeometry(m_windowRect.x()/m_scaleRate, m_windowRect.y()/m_scaleRate, m_windowRect.width()/m_scaleRate, m_windowRect.height()/m_scaleRate);
@@ -184,12 +185,32 @@ void ShotterScreen::wheelEvent(QWheelEvent *e)
     setGeometry(zoomRect(m_geoRect, m_zoom).toRect());
 }
 
+void ShotterScreen::changeEvent(QEvent *event)
+{
+    if(QEvent::WindowStateChange == event->type()){
+        QWindowStateChangeEvent * stateEvent = dynamic_cast<QWindowStateChangeEvent*>(event);
+        if(Q_NULLPTR != stateEvent){
+            if(Qt::WindowMinimized == stateEvent->oldState()){
+                setWindowFlags(Qt::FramelessWindowHint | Qt::SubWindow | Qt::WindowStaysOnTopHint); // 设置成无边框对话框
+                show();
+            }
+        }
+    }
+}
+
 // 根据当前时间获得截图名
 const QString ShotterScreen::getFileName()
 {
     QDateTime currentTime = QDateTime::currentDateTime();
     QString file_name = "Rotor_" + currentTime.toString(QStringLiteral("yyyy-MM-dd-HH-mm-ss"));
     return file_name;
+}
+
+void ShotterScreen::minimize()
+{
+    setWindowFlags(Qt::FramelessWindowHint | Qt::Window | Qt::WindowStaysOnTopHint); // 设置成无边框对话框
+    show();
+    setWindowState(Qt::WindowMinimized);
 }
 
 QRectF ShotterScreen::zoomRect(const QRectF &rect, float zoom)

@@ -7,6 +7,9 @@
 #include <QRect>
 #include <QList>
 
+#include "../i_module.h"
+
+
 class ShotterScreen;
 class Amplifier;
 class QTimer;
@@ -15,7 +18,7 @@ class QMenu;
 /**
  * @brief The ScreenShotter class
  */
-class ScreenShotter : QWidget
+class ScreenShotter : QWidget, IModule
 {
     Q_OBJECT
 signals:
@@ -23,12 +26,11 @@ signals:
 
 public:
     ScreenShotter(QWidget *parent = nullptr);
-    ~ScreenShotter();
 
+    virtual void onHotkey();
     void Shot();
 
 protected:
-    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result);
     void mousePressEvent(QMouseEvent *);
     void mouseReleaseEvent(QMouseEvent *e);
     void mouseMoveEvent(QMouseEvent *e);

@@ -8,7 +8,7 @@
 Amplifier::Amplifier(std::shared_ptr<QPixmap> originPainting, QWidget *parent) :QWidget(parent){
     m_originPainting = originPainting;
 
-    setWindowFlags(Qt::FramelessWindowHint|Qt::WindowSystemMenuHint); // 设置成无边框对话框
+    setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint); // 设置成无边框对话框
     setMouseTracking(true); // 开启鼠标实时追踪
 
     // 设置默认大小

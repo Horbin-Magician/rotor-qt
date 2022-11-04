@@ -4,6 +4,8 @@
 #include <iostream>
 #include <fstream>
 #include <QDebug>
+#include <QElapsedTimer>
+#include <QtConcurrent/QtConcurrent>
 
 #include "Models/setting_model.h"
 
@@ -14,6 +16,7 @@ Volume::Volume(WCHAR drive)
     // Initialize member variables
     m_drive = drive; // drive letter of volume
     m_driveFRN = 0x5000000000005; // drive FileReferenceNumber
+    m_StartUSN = 0x0;
     // Open a handle to the volume
     m_hVol = Open(m_drive, GENERIC_READ); // UPDATA:20220910 del flag "GENERIC_WRITE"
     if (INVALID_HANDLE_VALUE == m_hVol) CleanUp();
@@ -58,6 +61,9 @@ BOOL Volume::Query(PUSN_JOURNAL_DATA pUsnJournalData){
 
 // Enumerate the MFT for all entries. Store the file reference numbers of any directories in the database.
 void Volume::BuildIndex(){
+    QElapsedTimer timedebuge;
+    timedebuge.start();
+
     ReleaseIndex();
 
     USN_JOURNAL_DATA ujd;
@@ -66,8 +72,8 @@ void Volume::BuildIndex(){
     // add the root directory
     WCHAR szRoot[_MAX_PATH];
     wsprintf(szRoot, TEXT("%c:"), m_drive);
-    wstring pwstring(szRoot);
-    AddFile(m_driveFRN, pwstring, 0);
+    AddFile(m_driveFRN, (wstring)szRoot, 0);
+
     MFT_ENUM_DATA med;
     med.StartFileReferenceNumber = 0;
     med.LowUsn = 0;
@@ -75,17 +81,52 @@ void Volume::BuildIndex(){
 
     BYTE pData[sizeof(DWORDLONG) * 0x10000];
     DWORD cb;
+
     while (DeviceIoControl(m_hVol, FSCTL_ENUM_USN_DATA, &med, sizeof(med), pData, sizeof(pData), &cb, NULL) != FALSE){
         PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
         while ((PBYTE) pRecord < (pData + cb)){
             wstring sz((LPCWSTR) ((PBYTE) pRecord + pRecord->FileNameOffset), pRecord->FileNameLength / sizeof(WCHAR));
+
             AddFile(pRecord->FileReferenceNumber, sz, pRecord->ParentFileReferenceNumber);
             pRecord = (PUSN_RECORD) ((PBYTE) pRecord + pRecord->RecordLength);
         }
-        med.StartFileReferenceNumber = * (DWORDLONG *) pData;
+        med.StartFileReferenceNumber = * (USN *) pData;
     }
-
+    qDebug()<<(char)m_drive<<"构建耗时："<<timedebuge.elapsed()<<"ms";
     ReduceIndex();
+
+    QFuture<void> future = QtConcurrent::run([=](){UpdateIndex();});
+}
+
+void Volume::UpdateIndex(){
+    WCHAR szRoot[_MAX_PATH];
+    wsprintf(szRoot, TEXT("%c:"), m_drive);
+
+    USN_JOURNAL_DATA ujd;
+    Query(&ujd);
+
+    BYTE pData[sizeof(DWORDLONG) * 0x10000];
+    DWORD cb;
+    READ_USN_JOURNAL_DATA rujd = {m_StartUSN, 4294967295, 0, 0, 0, ujd.UsnJournalID};
+
+    while (DeviceIoControl(m_hVol, FSCTL_READ_USN_JOURNAL, &rujd, sizeof(rujd), pData, sizeof(pData), &cb, NULL)){
+        PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
+        while ((PBYTE) pRecord < (pData + cb)){
+            wstring sz((LPCWSTR) ((PBYTE) pRecord + pRecord->FileNameOffset), pRecord->FileNameLength / sizeof(WCHAR));
+
+            if ((pRecord->Reason & USN_REASON_FILE_CREATE) == USN_REASON_FILE_CREATE){
+                AddFile(pRecord->FileReferenceNumber, sz, pRecord->ParentFileReferenceNumber);
+            }
+            else if ((pRecord->Reason & USN_REASON_FILE_DELETE) == USN_REASON_FILE_DELETE){
+                m_FileMap.remove(pRecord->FileReferenceNumber);
+            }
+            else if ((pRecord->Reason & USN_REASON_RENAME_NEW_NAME) == USN_REASON_RENAME_NEW_NAME){
+                AddFile(pRecord->FileReferenceNumber, sz, pRecord->ParentFileReferenceNumber);
+            }
+            pRecord = (PUSN_RECORD) ((PBYTE) pRecord + pRecord->RecordLength);
+        }
+        rujd.StartUsn = *(USN *)&pData;
+    }
 }
 
 void Volume::StopFind(){

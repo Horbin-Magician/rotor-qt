@@ -4,6 +4,8 @@
 Setting::Setting(QWidget *parent) : QWidget{parent}
 {
     this->initUI();
+    setAttribute(Qt::WA_DeleteOnClose, false);
+
 }
 
 bool Setting::SwitchContent(const short index)

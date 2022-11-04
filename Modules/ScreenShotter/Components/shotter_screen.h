@@ -19,12 +19,13 @@ protected:
     void mouseMoveEvent(QMouseEvent *e); // 鼠标移动事件
     void paintEvent(QPaintEvent *e); // 界面自绘事件
     void wheelEvent(QWheelEvent *e);
+    void changeEvent(QEvent *event);
 
 public slots:
     void onSaveScreen(void); // 保存屏幕到剪切板中
     void onSaveScreenOther(void); // 保存编辑屏幕到其他路径下
     void quitScreenshot(void); // 退出当前截图窗口
-
+    void minimize();
 private:
     enum DIRECTION {UPPER=0,LOWER,LEFT,RIGHT,LEFTUPPER,LEFTLOWER,RIGHTLOWER,RIGHTUPPER,NONE}; // 方位枚举
     const int M_PADDING = 6; // 内边距，决定拖拽的触发。
@@ -42,6 +43,7 @@ private:
 
     DIRECTION getRegion(const QPoint &cursor); // 获得当前坐标点的边界方位
     virtual const QString getFileName(void); // 获得一个以时间格式命名的文件名
+
 };
 
 #endif // SHOTTERSCREEN_H

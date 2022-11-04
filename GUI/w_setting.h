@@ -19,6 +19,7 @@ class Setting : public QWidget
 public:
     explicit Setting(QWidget *parent = nullptr);
     bool SwitchContent(const short index);
+
 private:
     QList<QString> m_SettingNames;
     QHBoxLayout* m_MainLayout;

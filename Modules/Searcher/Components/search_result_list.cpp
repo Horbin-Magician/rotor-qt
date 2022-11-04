@@ -1,7 +1,6 @@
 #include "search_result_list.h"
 #include "rotor.h"
 
-
 SearchResultList::SearchResultList(QWidget *parent): QListWidget(parent)
 {
     initUI();
@@ -15,12 +14,13 @@ void SearchResultList::update(const vector<SearchResultFile> &results)
 
     int len = results.size();
     setFixedHeight( (60 * len > 540) ? 540 : 60 * len);
+
     for(int i =0; i < 20; ++i){
         QListWidgetItem* item = this->item(i);
         if (i < len){
             QString filename = QString::fromStdWString(results[i].filename);
             QString path = QString::fromStdWString(results[i].path);
-            QFileInfo fileInfo( path + filename);
+            QFileInfo fileInfo( path + filename );
             m_fileInfos.append(fileInfo);
             if(item == nullptr){
                 item = new QListWidgetItem(this);
@@ -88,22 +88,18 @@ void SearchResultList::initUI()
     connect(this, &SearchResultList::customContextMenuRequested,this, [&](){m_ContextMenu->exec(QCursor::pos());});
 }
 
-SearchResultItemWidget::SearchResultItemWidget(const QFileInfo fileInfo)
+
+SearchResultItemWidget::SearchResultItemWidget(QFileInfo &fileInfo)
 {
-    QFileIconProvider iconProvider;
-    QPixmap pixmap;
-    if(fileInfo.isShortcut()) pixmap = iconProvider.icon(QFileInfo(fileInfo.symLinkTarget())).pixmap(32, 32);
-    else pixmap = iconProvider.icon(fileInfo).pixmap(32, 32);
     m_icon = new QLabel();
     m_icon->setFixedSize(32, 32);
-    m_icon->setPixmap(pixmap);
 
     QVBoxLayout* layout_right = new QVBoxLayout();
-    m_titleLabel = new QLabel(fileInfo.fileName());
+    m_titleLabel = new QLabel();
     m_titleLabel->setStyleSheet("QLabel{font-size:14px;} ");
-    m_subLabel = new QLabel(fileInfo.absolutePath());
-    m_subLabel->setStyleSheet("QLabel{color: grey;}");
     layout_right->addWidget(m_titleLabel);
+    m_subLabel = new QLabel();
+    m_subLabel->setStyleSheet("QLabel{color: grey;}");
     layout_right->addWidget(m_subLabel);
 
     QHBoxLayout* layout_main = new QHBoxLayout();
@@ -111,15 +107,14 @@ SearchResultItemWidget::SearchResultItemWidget(const QFileInfo fileInfo)
     layout_main->addLayout(layout_right);
     setLayout(layout_main);
     setStyleSheet("*{background:transparent;} .QWidget{padding:10px}");
+    update(fileInfo);
 }
 
-void SearchResultItemWidget::update(const QFileInfo fileInfo)
+void SearchResultItemWidget::update(QFileInfo &fileInfo)
 {
-    QFileIconProvider iconProvider;
-    QPixmap pixmap;
-    if(fileInfo.isShortcut()) pixmap = iconProvider.icon(QFileInfo(fileInfo.symLinkTarget())).pixmap(32, 32);
-    else pixmap = iconProvider.icon(fileInfo).pixmap(32, 32);
-    m_icon->setPixmap(pixmap);
+    if(fileInfo.isShortcut()) m_pixmap = m_iconProvider.icon(QFileInfo(fileInfo.symLinkTarget())).pixmap(32, 32);
+    else m_pixmap = m_iconProvider.icon(fileInfo).pixmap(32, 32);
+    m_icon->setPixmap(m_pixmap);
 
     m_titleLabel->setText(fileInfo.fileName());
     m_subLabel->setText(fileInfo.absolutePath());
