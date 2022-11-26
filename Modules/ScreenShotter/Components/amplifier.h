@@ -11,12 +11,12 @@ class Amplifier : public QWidget
 public:
     explicit Amplifier(std::shared_ptr<QPixmap> originPainting, QWidget *parent = 0);
 
-signals:
+    int switchColorType();
+    QString getColorStr();
 
 public slots:
     void onSizeChange(int w, int h); // 大小修改
     void onPostionChange(int x, int y); // 位置修改
-
 protected:
     virtual void paintEvent(QPaintEvent *); // 窗口自绘事件
 
@@ -27,6 +27,9 @@ private:
     int m_sideLength; // 取色放大器的边长
     int m_imageHeight; // 放大区的高度
     std::shared_ptr<QPixmap> m_originPainting; // 屏幕原画
+
+    int m_colorType;
+    QString m_colorStr;
 };
 
 #endif /// OEAMPLIFIER_H

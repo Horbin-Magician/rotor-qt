@@ -13,10 +13,10 @@
 #include <QPen>
 
 #include <windows.h>
+#include <dwmapi.h>
 
 #include "Components/amplifier.h"
-#include "Components/shotter_screen.h"
-
+#include "Components/shotter_window.h"
 
 ScreenShotter::ScreenShotter(QWidget *parent) : QWidget(parent)
 {
@@ -25,7 +25,6 @@ ScreenShotter::ScreenShotter(QWidget *parent) : QWidget(parent)
     m_originPainting = nullptr;
     m_desktopRect = QGuiApplication::primaryScreen()->geometry(); // 获取设备屏幕大小
     m_scaleRate = QGuiApplication::primaryScreen()->devicePixelRatio();
-
     initWindow(); // 初始化窗口
 }
 
@@ -44,7 +43,67 @@ void ScreenShotter::Shot()
     emit cursorPosChange(cursor().pos().x(), cursor().pos().y()); // 更新鼠标的位置
     updateMouseWindow(); // 更新鼠标区域窗口
     show(); // 展示窗口
+    this->activateWindow();
     this->setFocus();
+}
+
+// 绘制背景和选区
+void ScreenShotter::paintEvent(QPaintEvent *)
+{
+    QPainter painter(this);
+    // 绘制背景
+    painter.drawPixmap(0, 0, m_desktopRect.width(), m_desktopRect.height(), *m_backgroundScreen);
+    // 绘制选区
+    if (!m_windowRect.isEmpty()) {
+        QPen pen = painter.pen();
+        pen.setColor(QColor(0,175,255));
+        pen.setWidth(2);
+        pen.setJoinStyle(Qt::MiterJoin);
+        painter.setPen(pen);
+        float x = m_windowRect.x()  / m_scaleRate;
+        float y = m_windowRect.y()  / m_scaleRate;
+        float width = m_windowRect.width() / m_scaleRate;
+        float height = m_windowRect.height() / m_scaleRate;
+        QRectF scaledRect = QRectF(x, y, width, height);
+        painter.drawPixmap(QPointF(x, y), *m_originPainting, m_windowRect); // 绘制截屏编辑窗口
+        painter.drawRect(scaledRect); // 绘制边框线
+    }
+}
+
+bool ScreenShotter::event(QEvent *e)
+{
+    if(e->type() == QEvent::KeyPress){
+        QKeyEvent* keyEvent = (QKeyEvent*) e;
+        if (keyEvent->key() == Qt::Key_Escape) endShot(); // Esc键退出截图
+        else if (keyEvent->key() == Qt::Key_Z) m_amplifierTool->switchColorType(); // Z键切换颜色
+        else if (keyEvent->key() == Qt::Key_C){ // C键复制颜色
+            QString colorStr = m_amplifierTool->getColorStr();
+            QClipboard *clipboard = QGuiApplication::clipboard();
+            clipboard->setText(colorStr);
+        }
+        else keyEvent->ignore();
+    } else if(e->type() == QEvent::MouseMove){
+        QMouseEvent* mouseEvent = (QMouseEvent*) e;
+        emit cursorPosChange(mouseEvent->position().x(), mouseEvent->position().y());
+        updateMouseWindow(); // 更新当前鼠标选中的窗口
+        update();
+    } else if(e->type() == QEvent::MouseButtonPress){ // 按下左键，开始绘制截图窗口
+        QMouseEvent* mouseEvent = (QMouseEvent*) e;
+        if (mouseEvent->button() == Qt::LeftButton) {
+            m_startPoint = QPoint(mouseEvent->pos().x() * m_scaleRate, mouseEvent->pos().y() * m_scaleRate);
+            m_state = 2;
+        }
+    } else if(e->type() == QEvent::MouseButtonRelease){ // 松开左键，新建截图窗口
+        QMouseEvent* mouseEvent = (QMouseEvent*) e;
+        if (m_state == 2 && mouseEvent->button() == Qt::LeftButton) {
+            ShotterWindow* shotterWindow = new ShotterWindow(m_originPainting, m_windowRect);
+            connect(shotterWindow, &ShotterWindow::sgn_close, this, &ScreenShotter::onShotterWindowClose);
+            connect(shotterWindow, &ShotterWindow::sgn_move, this, &ScreenShotter::onShotterWindowMove);
+            m_ShotterWindowList.append(shotterWindow);
+            endShot(); // 结束截图
+        }
+    }
+    return QWidget::event(e);
 }
 
 // 捕获屏幕
@@ -64,27 +123,15 @@ void ScreenShotter::CaptureScreen()
 // 更新鼠标区域窗口
 void ScreenShotter::updateMouseWindow()
 {
-    // 获得当前鼠标位置
     POINT pt;
-    ::GetCursorPos(&pt);
+    ::GetCursorPos(&pt); // 获得当前鼠标位置
     if (m_state == 1){
         ::EnableWindow((HWND)winId(), FALSE);
         // 获得当前位置桌面上的子窗口
-        HWND hwnd = ::ChildWindowFromPointEx(::GetDesktopWindow(), pt, CWP_SKIPDISABLED | CWP_SKIPINVISIBLE);
-        if (hwnd != NULL) {
-            HWND temp_hwnd;
-            temp_hwnd = hwnd;
-            while (true) {
-                ::GetCursorPos(&pt);
-                ::ScreenToClient(temp_hwnd, &pt);
-                temp_hwnd = ::ChildWindowFromPointEx(temp_hwnd, pt, CWP_SKIPINVISIBLE);
-                if (temp_hwnd == NULL || temp_hwnd == hwnd) break;
-                hwnd = temp_hwnd;
-            }
-            RECT temp_window;
-            ::GetWindowRect(hwnd, &temp_window);
-            m_windowRect.setRect(temp_window.left,temp_window.top, temp_window.right - temp_window.left, temp_window.bottom - temp_window.top);
-        }
+        HWND hwnd = ::ChildWindowFromPointEx(::GetDesktopWindow(), pt, CWP_SKIPDISABLED | CWP_SKIPINVISIBLE | CWP_SKIPTRANSPARENT);
+        RECT temp_window;
+        ::DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, &temp_window, sizeof(temp_window));
+        m_windowRect.setRect(temp_window.left,temp_window.top, temp_window.right - temp_window.left, temp_window.bottom - temp_window.top);
         ::EnableWindow((HWND)winId(), TRUE);
     }else if (m_state == 2){
         const int& rx = (pt.x >= m_startPoint.x()) ? m_startPoint.x() : pt.x;
@@ -102,6 +149,7 @@ void ScreenShotter::initWindow()
     setWindowFlags(Qt::FramelessWindowHint | Qt::SubWindow | Qt::WindowStaysOnTopHint);
     setGeometry(m_desktopRect); // 窗口与显示屏对齐
     setMouseTracking(true); // 开启鼠标实时追踪
+    setFocusPolicy(Qt::StrongFocus);
     hide();
 }
 
@@ -109,7 +157,7 @@ void ScreenShotter::initWindow()
 void ScreenShotter::initAmplifier()
 {
     m_amplifierTool.reset(new Amplifier(m_originPainting, this));
-    connect(this,SIGNAL(cursorPosChange(int,int)), m_amplifierTool.get(), SLOT(onPostionChange(int,int)));
+    connect(this, &ScreenShotter::cursorPosChange, m_amplifierTool.get(), &Amplifier::onPostionChange);
     m_amplifierTool->show();
     m_amplifierTool->raise();
 }
@@ -122,56 +170,32 @@ void ScreenShotter::endShot()
     m_state = 0;
 }
 
-// 绘制背景和选区
-void ScreenShotter::paintEvent(QPaintEvent *)
+void ScreenShotter::onShotterWindowClose(ShotterWindow * shotterWindow)
 {
-    QPainter painter(this);
-    // 绘制背景
-    painter.drawPixmap(0, 0, m_desktopRect.width(), m_desktopRect.height(), *m_backgroundScreen);
-    // 绘制选区
-    if (!m_windowRect.isEmpty()) {
-        QPen pen = painter.pen();
-        pen.setColor(QColor(0,175,255));
-        pen.setWidth(4);
-        pen.setJoinStyle(Qt::MiterJoin);
-        painter.setPen(pen);
-        float x = m_windowRect.x()  / m_scaleRate;
-        float y = m_windowRect.y()  / m_scaleRate;
-        float width = m_windowRect.width() / m_scaleRate;
-        float height = m_windowRect.height() / m_scaleRate;
-        QRectF scaledRect = QRectF(x, y, width, height);
-        painter.drawPixmap(QPointF(x, y), *m_originPainting, m_windowRect); // 绘制截屏编辑窗口
-        painter.drawRect(scaledRect); // 绘制边框线
+    m_ShotterWindowList.removeAll(shotterWindow);
+}
+
+void ScreenShotter::onShotterWindowMove(ShotterWindow * shotterWindow)
+{
+    foreach (ShotterWindow* otherWin, m_ShotterWindowList) {
+        if(otherWin != shotterWindow){
+            QRect rectA = shotterWindow->geometry();
+            QRect rectB = otherWin->geometry();
+            int padding = 10;
+
+            if( qAbs(rectA.right() - rectB.left()) < padding) shotterWindow->stick(STICK_TYPE::RIGHT_LEFT, otherWin);
+            else if( qAbs(rectA.right() - rectB.right()) < padding) shotterWindow->stick(STICK_TYPE::RIGHT_RIGHT, otherWin);
+            else if( qAbs(rectA.left() - rectB.right()) < padding) shotterWindow->stick(STICK_TYPE::LEFT_RIGHT, otherWin);
+            else if( qAbs(rectA.left() - rectB.left()) < padding) shotterWindow->stick(STICK_TYPE::LEFT_LEFT, otherWin);
+
+            if( qAbs(rectA.top() - rectB.bottom()) < padding) shotterWindow->stick(STICK_TYPE::UPPER_LOWER, otherWin);
+            else if( qAbs(rectA.bottom() - rectB.top()) < padding) shotterWindow->stick(STICK_TYPE::LOWER_UPPER, otherWin);
+            else if( qAbs(rectA.top() - rectB.top()) < padding) shotterWindow->stick(STICK_TYPE::UPPER_UPPER, otherWin);
+            else if( qAbs(rectA.bottom() - rectB.bottom()) < padding) shotterWindow->stick(STICK_TYPE::LOWER_LOWER, otherWin);
+        }
     }
 }
 
-// Esc键退出截图
-void ScreenShotter::keyPressEvent(QKeyEvent *e) {
-    if (e->key() == Qt::Key_Escape) endShot();
-    else e->ignore();
-}
 
-// 按下左键，新建截图窗口
-void ScreenShotter::mousePressEvent(QMouseEvent *e)
-{
-    if (e->button() == Qt::LeftButton) {
-        m_startPoint = QPoint(e->pos().x() * m_scaleRate, e->pos().y() * m_scaleRate);
-        m_state = 2;
-    }
-}
 
-void ScreenShotter::mouseReleaseEvent(QMouseEvent *e)
-{
-    if (m_state == 2 && e->button() == Qt::LeftButton) {
-        ShotterScreen* screen = new ShotterScreen(m_originPainting, m_windowRect);
-        m_screenToolList.append(screen);
-        endShot(); // 结束截图
-    }
-}
 
-// 鼠标移动事件
-void ScreenShotter::mouseMoveEvent(QMouseEvent *e) {
-    emit cursorPosChange(e->position().x(), e->position().y());
-    updateMouseWindow(); // 更新当前鼠标选中的窗口
-    update();
-}

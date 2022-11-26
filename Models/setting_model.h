@@ -12,7 +12,6 @@ public:
 
     bool getIfPowerBoot();
     void setIfPowerBoot(bool value);
-
     QStringList getIgnoredPath();
     void setIgnoredPath(QString value);
 private:

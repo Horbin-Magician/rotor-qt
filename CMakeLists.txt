@@ -35,7 +35,7 @@ set(PROJECT_SOURCES
 
     Modules/ScreenShotter/screen_shotter.h Modules/ScreenShotter/screen_shotter.cpp
     Modules/ScreenShotter/Components/amplifier.h Modules/ScreenShotter/Components/amplifier.cpp
-    Modules/ScreenShotter/Components/shotter_screen.h Modules/ScreenShotter/Components/shotter_screen.cpp
+    Modules/ScreenShotter/Components/shotter_window.h Modules/ScreenShotter/Components/shotter_window.cpp
 )
 
 # add icon
@@ -65,6 +65,7 @@ else()
 endif()
 
 target_link_libraries(Rotor PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(Rotor PRIVATE Dwmapi.lib)
 
 set_target_properties(Rotor PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com

@@ -77,11 +77,6 @@ void Setting::initSettingWidgets()
             });
             filterLayout->addWidget(lineEdit);
             widget->layout()->addWidget(filterWidget);
-
-            QPushButton* resetButton = new QPushButton();
-            resetButton->setText("重建索引");
-            connect(resetButton, &QPushButton::clicked, [&](){emit rebuildIndex();});
-            widget->layout()->addWidget(resetButton);
         }
         ( (QBoxLayout*)( widget->layout() ) )->addStretch();
     }

@@ -52,7 +52,7 @@ void SearchResultList::up()
 void SearchResultList::down()
 {
     int currentRow = this->currentRow();
-    if(currentRow + 1 < this->count()) this->setCurrentRow(currentRow + 1);;
+    if(currentRow + 1 < m_fileInfos.length()) this->setCurrentRow(currentRow + 1);;
 }
 
 // open selected item
@@ -79,15 +79,15 @@ void SearchResultList::initUI()
     this->setProperty("contextMenuPolicy", Qt::CustomContextMenu);
     this->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     this->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    this->setStyleSheet("QListWidget{outline: none; border: none;}");
-
+    this->setStyleSheet("QListWidget{outline: none; border: none;}"
+                        "QListWidget::item:selected{background: rgb(255,255,255);}"
+                        "QListWidget::item:hover{background: rgb(200,200,200);}");
     m_ContextMenu = new QMenu(this);
     QAction* openPath = new QAction("打开文件所在目录", this);
     m_ContextMenu->addAction(openPath);
     connect(openPath, &QAction::triggered, this, &SearchResultList::openCurrentPath);
     connect(this, &SearchResultList::customContextMenuRequested,this, [&](){m_ContextMenu->exec(QCursor::pos());});
 }
-
 
 SearchResultItemWidget::SearchResultItemWidget(QFileInfo &fileInfo)
 {

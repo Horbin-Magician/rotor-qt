@@ -67,7 +67,7 @@ void Searcher::initUI(){
 
     m_layout = new QVBoxLayout(this);
     m_layout->setContentsMargins(0, 0, 0, 0);
-    m_layout->setSpacing(5);
+    m_layout->setSpacing(2);
 
     m_lineEdit = new QLineEdit(this);
     m_lineEdit->setFixedSize(570, 60);

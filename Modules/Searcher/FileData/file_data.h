@@ -4,6 +4,7 @@
 #include <QList>
 #include <QObject>
 #include <QRunnable>
+#include <QtConcurrent/QtConcurrent>
 
 #include "volume.h"
 
@@ -50,6 +51,7 @@ public:
 private:
     QList<char> m_vols;
     QList<Volume*> m_volumes;
+    QList<QFuture<void>> m_futures;
 
     QString m_findingName;
     vector<SearchResultFile> m_findingResult;

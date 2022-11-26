@@ -1,4 +1,4 @@
-#include "shotter_screen.h"
+#include "shotter_window.h"
 
 #include <QMenu>
 #include <QMouseEvent>
@@ -10,15 +10,18 @@
 #include <windows.h>
 
 
-ShotterScreen::ShotterScreen(std::shared_ptr<QPixmap> originPainting, QRect windowRect, QWidget *parent):QWidget(parent)
+ShotterWindow::ShotterWindow(std::shared_ptr<QPixmap> originPainting, QRectF windowRect, QWidget *parent):QWidget(parent)
 {
-    setWindowFlags(Qt::FramelessWindowHint | Qt::SubWindow | Qt::WindowStaysOnTopHint);
+    setWindowFlags(Qt::FramelessWindowHint | Qt::Window | Qt::WindowStaysOnTopHint);
 
     m_originPainting = originPainting->copy();
+    m_isStickX = false;
+    m_isStickY = false;
     m_isPressed = false;
     m_windowRect = windowRect;
     m_scaleRate = QGuiApplication::primaryScreen()->devicePixelRatio();
     m_zoom = 1;
+    m_direction = NONE;
 
     m_menu = new QMenu(this);
     m_menu->addAction(QStringLiteral("复制截图"), this, SLOT(onSaveScreen()));
@@ -28,15 +31,37 @@ ShotterScreen::ShotterScreen(std::shared_ptr<QPixmap> originPainting, QRect wind
 
     setGeometry(m_windowRect.x()/m_scaleRate, m_windowRect.y()/m_scaleRate, m_windowRect.width()/m_scaleRate, m_windowRect.height()/m_scaleRate);
     m_geoRect = geometry();
-
     setMouseTracking(true); // 开启鼠标实时追踪
     show();
 }
 
-// 判断鼠标区域
-ShotterScreen::DIRECTION ShotterScreen::getRegion(const QPoint &cursor)
+void ShotterWindow::stick(STICK_TYPE stick_type, ShotterWindow * shotterWindow)
 {
-    ShotterScreen::DIRECTION ret_dir = NONE;
+    QPoint delta;
+    switch(stick_type){
+        case STICK_TYPE::RIGHT_LEFT: delta = QPoint((shotterWindow->geometry().left() - geometry().right()), 0); break;
+        case STICK_TYPE::RIGHT_RIGHT: delta = QPoint((shotterWindow->geometry().right() - geometry().right()), 0); break;
+        case STICK_TYPE::LEFT_RIGHT: delta = QPoint((shotterWindow->geometry().right() - geometry().left()), 0); break;
+        case STICK_TYPE::LEFT_LEFT: delta = QPoint((shotterWindow->geometry().left() - geometry().left()), 0); break;
+        case STICK_TYPE::UPPER_LOWER: delta = QPoint(0, shotterWindow->geometry().bottom() - geometry().top()); break;
+        case STICK_TYPE::UPPER_UPPER: delta = QPoint(0, shotterWindow->geometry().top() - geometry().top()); break;
+        case STICK_TYPE::LOWER_UPPER: delta = QPoint(0, shotterWindow->geometry().top() - geometry().bottom()); break;
+        case STICK_TYPE::LOWER_LOWER: delta = QPoint(0, shotterWindow->geometry().bottom() - geometry().bottom()); break;
+        default:break;
+    }
+    if(stick_type == STICK_TYPE::RIGHT_LEFT || stick_type == STICK_TYPE::RIGHT_RIGHT || stick_type == STICK_TYPE::LEFT_RIGHT || stick_type == STICK_TYPE::LEFT_LEFT){
+        m_isStickX = true;
+    }else if(stick_type == STICK_TYPE::UPPER_LOWER || stick_type == STICK_TYPE::UPPER_UPPER || stick_type == STICK_TYPE::LOWER_UPPER || stick_type == STICK_TYPE::LOWER_LOWER){
+        m_isStickY = true;
+    }
+    move(pos() + delta);
+    m_geoRect.moveTo(m_geoRect.topLeft() + delta);
+}
+
+// 判断鼠标区域
+DIRECTION ShotterWindow::getMouseRegion(const QPoint &cursor)
+{
+    DIRECTION ret_dir = NONE;
 
     QPoint pt_lu = rect().topLeft(); // left upper
     QPoint pt_rl = rect().bottomRight(); // right lower
@@ -93,12 +118,12 @@ ShotterScreen::DIRECTION ShotterScreen::getRegion(const QPoint &cursor)
 }
 
 // 在鼠标位置弹射出菜单栏
-void ShotterScreen::contextMenuEvent(QContextMenuEvent *)
+void ShotterWindow::contextMenuEvent(QContextMenuEvent *)
 {
     m_menu->exec(cursor().pos());
 }
 
-void ShotterScreen::mousePressEvent(QMouseEvent *e)
+void ShotterWindow::mousePressEvent(QMouseEvent *e)
 {
     if (e->button() == Qt::LeftButton) {
         m_isPressed = true;
@@ -106,46 +131,32 @@ void ShotterScreen::mousePressEvent(QMouseEvent *e)
     }
 }
 
-void ShotterScreen::mouseReleaseEvent(QMouseEvent *e)
+void ShotterWindow::mouseReleaseEvent(QMouseEvent *e)
 {
     if (e->button() == Qt::LeftButton) m_isPressed = false;
 }
 
-void ShotterScreen::mouseMoveEvent(QMouseEvent *e)
+void ShotterWindow::mouseMoveEvent(QMouseEvent *e)
 {
-    if(!m_isPressed) m_direction = getRegion(e->pos());
+    if(!m_isPressed) m_direction = getMouseRegion(e->pos());
     if(m_isPressed) {
         if(m_direction != NONE) {
             // 鼠标进行拖拉拽
             QPointF globalPosition = e->globalPosition();
             QRectF geo = geometry();
             switch(m_direction) {
-                case LEFT:
-                    geo.setLeft(e->globalPosition().x());
-                    break;
-                case RIGHT:
-                    geo.setRight(globalPosition.x());
-                    break;
-                case UPPER:
-                    geo.setTop(globalPosition.y());
-                    break;
-                case LOWER:
-                    geo.setBottom(globalPosition.y());
-                    break;
-                case LEFTUPPER:
-                    geo.setTopLeft(globalPosition.toPoint());
-                    break;
-                case RIGHTUPPER:
-                    geo.setTopRight(globalPosition.toPoint());
-                    break;
-                case LEFTLOWER:
-                    geo.setBottomLeft(globalPosition.toPoint());
-                case RIGHTLOWER:
-                    geo.setBottomRight(globalPosition.toPoint());
-                    break;
+                case LEFT: geo.setLeft(e->globalPosition().x()); break;
+                case RIGHT: geo.setRight(globalPosition.x()); break;
+                case UPPER: geo.setTop(globalPosition.y()); break;
+                case LOWER: geo.setBottom(globalPosition.y()); break;
+                case LEFTUPPER: geo.setTopLeft(globalPosition.toPoint()); break;
+                case RIGHTUPPER: geo.setTopRight(globalPosition.toPoint()); break;
+                case LEFTLOWER: geo.setBottomLeft(globalPosition.toPoint()); break;
+                case RIGHTLOWER: geo.setBottomRight(globalPosition.toPoint()); break;
                 default: break;
             }
             QRectF tmpRect = zoomRect(geo, 1/m_zoom);
+            if(tmpRect.width() <= 0 || tmpRect.height() <= 0) close();
             float x = m_windowRect.x() + (tmpRect.x() - m_geoRect.x()) * m_scaleRate / m_zoom;
             float y = m_windowRect.y() + (tmpRect.y() - m_geoRect.y()) * m_scaleRate / m_zoom;
             float width = tmpRect.width() * m_scaleRate;
@@ -156,14 +167,25 @@ void ShotterScreen::mouseMoveEvent(QMouseEvent *e)
             update();
         }
         else {
-            const QPoint delta = e->position().toPoint() - m_movePos;
-            move(pos() + delta);
-            m_geoRect.moveTo(m_geoRect.topLeft() + delta);
+            QPoint delta = e->position().toPoint() - m_movePos;
+            if(m_isStickX){
+                if(abs(delta.x()) > 20) m_isStickX = false;
+                else delta.setX(0);
+            }
+            if(m_isStickY){
+                if(abs(delta.y()) > 20) m_isStickY = false;
+                else delta.setY(0);
+            }
+            if(m_isStickX == false || m_isStickY == false){
+                move(pos() + delta);
+                m_geoRect.moveTo(m_geoRect.topLeft() + delta);
+                emit sgn_move(this);
+            }
         }
     }
 }
 
-void ShotterScreen::paintEvent(QPaintEvent *)
+void ShotterWindow::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
     QPen pen = painter.pen();
@@ -172,61 +194,63 @@ void ShotterScreen::paintEvent(QPaintEvent *)
     pen.setJoinStyle(Qt::MiterJoin);
     painter.setPen(pen);
     painter.drawPixmap(rect(), m_originPainting, m_windowRect); // 绘制截屏编辑窗口
-    painter.drawRect(rect()); // 绘制边框线
+    painter.drawRect(rect()); // 绘制边框线C
 }
 
-void ShotterScreen::wheelEvent(QWheelEvent *e)
+void ShotterWindow::wheelEvent(QWheelEvent *e)
 {
-    if(e->angleDelta().y() > 0){
-        m_zoom = m_zoom + 0.1;
-    }else if (e->angleDelta().y() < 0 && m_zoom > 0.1){
-        m_zoom = m_zoom - 0.1;
-    }
+    if(e->angleDelta().y() > 0) m_zoom = m_zoom + 0.1;
+    else if (e->angleDelta().y() < 0 && m_zoom > 0.1) m_zoom = m_zoom - 0.1;
     setGeometry(zoomRect(m_geoRect, m_zoom).toRect());
 }
 
-void ShotterScreen::changeEvent(QEvent *event)
+void ShotterWindow::changeEvent(QEvent *event)
 {
     if(QEvent::WindowStateChange == event->type()){
         QWindowStateChangeEvent * stateEvent = dynamic_cast<QWindowStateChangeEvent*>(event);
         if(Q_NULLPTR != stateEvent){
             if(Qt::WindowMinimized == stateEvent->oldState()){
-                setWindowFlags(Qt::FramelessWindowHint | Qt::SubWindow | Qt::WindowStaysOnTopHint); // 设置成无边框对话框
+                // 为了去除最小化后再打开时出现的白框闪烁，目前认为是windows的BUG
+                setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
+                setWindowFlags(Qt::FramelessWindowHint | Qt::Window | Qt::WindowStaysOnTopHint);
                 show();
             }
         }
     }
 }
 
+void ShotterWindow::closeEvent(QCloseEvent *event)
+{
+    emit sgn_close(this);
+}
+
 // 根据当前时间获得截图名
-const QString ShotterScreen::getFileName()
+const QString ShotterWindow::getFileName()
 {
     QDateTime currentTime = QDateTime::currentDateTime();
     QString file_name = "Rotor_" + currentTime.toString(QStringLiteral("yyyy-MM-dd-HH-mm-ss"));
     return file_name;
 }
 
-void ShotterScreen::minimize()
+void ShotterWindow::minimize()
 {
-    setWindowFlags(Qt::FramelessWindowHint | Qt::Window | Qt::WindowStaysOnTopHint); // 设置成无边框对话框
-    show();
     setWindowState(Qt::WindowMinimized);
 }
 
-QRectF ShotterScreen::zoomRect(const QRectF &rect, float zoom)
+QRectF ShotterWindow::zoomRect(const QRectF &rect, float zoom)
 {
     return QRectF(rect.x(), rect.y(), rect.width()*zoom, rect.height()*zoom);
 }
 
 // 保存图片到剪切板
-void ShotterScreen::onSaveScreen()
+void ShotterWindow::onSaveScreen()
 {
     QClipboard *board = QApplication::clipboard();
     board->setPixmap(m_originPainting.copy(m_windowRect.toRect())); // 把图片放入剪切板
 }
 
 // 保存图片到其他地方
-void ShotterScreen::onSaveScreenOther()
+void ShotterWindow::onSaveScreenOther()
 {
     QString fileName = QFileDialog::getSaveFileName(this, QStringLiteral("保存图片"), getFileName(), "PNG Files (*.PNG)");
     if (fileName.length() > 0) {
@@ -235,7 +259,6 @@ void ShotterScreen::onSaveScreenOther()
     }
 }
 
-// TODO 结束截图 (通知shotter)
-void ShotterScreen::quitScreenshot(){
+void ShotterWindow::quitScreenshot(){
     close();
 }

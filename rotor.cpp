@@ -22,7 +22,6 @@ Rotor::Rotor(QObject *parent)
     m_screenShotter = new ScreenShotter();
 
     m_setting = new Setting();
-    connect(m_setting, &Setting::rebuildIndex, m_searcher, &Searcher::initFileData);
 
     m_hotkey = new HotKey();
     m_hotkey->RgtHotKey(L"seacher", MOD_SHIFT, (UINT)0x46, (IModule*) m_searcher);
@@ -30,7 +29,7 @@ Rotor::Rotor(QObject *parent)
 
     m_menu = new QMenu();
     connect(addAction("设置"), &QAction::triggered, m_setting, &Setting::show);
-    connect(addAction("退出"), &QAction::triggered, this, &QApplication::quit);
+    connect(addAction("退出"), &QAction::triggered, this, &QApplication::exit, Qt::QueuedConnection);
 
     this->setContextMenu(m_menu);
     this->setIcon(QIcon(":/picture/Resources/favicon.ico"));

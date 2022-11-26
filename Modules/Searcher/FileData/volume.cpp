@@ -5,7 +5,6 @@
 #include <fstream>
 #include <QDebug>
 #include <QElapsedTimer>
-#include <QtConcurrent/QtConcurrent>
 
 #include "Models/setting_model.h"
 
@@ -66,8 +65,8 @@ void Volume::BuildIndex(){
 
     ReleaseIndex();
 
-    USN_JOURNAL_DATA ujd;
-    Query(&ujd);
+    Query(&m_ujd);
+    m_StartUSN = m_ujd.NextUsn;
 
     // add the root directory
     WCHAR szRoot[_MAX_PATH];
@@ -77,12 +76,12 @@ void Volume::BuildIndex(){
     MFT_ENUM_DATA med;
     med.StartFileReferenceNumber = 0;
     med.LowUsn = 0;
-    med.HighUsn = ujd.NextUsn;
+    med.HighUsn = m_ujd.NextUsn;
 
     BYTE pData[sizeof(DWORDLONG) * 0x10000];
     DWORD cb;
 
-    while (DeviceIoControl(m_hVol, FSCTL_ENUM_USN_DATA, &med, sizeof(med), pData, sizeof(pData), &cb, NULL) != FALSE){
+    while (DeviceIoControl(m_hVol, FSCTL_ENUM_USN_DATA, &med, sizeof(med), pData, sizeof(pData), &cb, NULL)){
         PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
         while ((PBYTE) pRecord < (pData + cb)){
             wstring sz((LPCWSTR) ((PBYTE) pRecord + pRecord->FileNameOffset), pRecord->FileNameLength / sizeof(WCHAR));
@@ -94,26 +93,22 @@ void Volume::BuildIndex(){
     }
     qDebug()<<(char)m_drive<<"构建耗时："<<timedebuge.elapsed()<<"ms";
     ReduceIndex();
-
-    QFuture<void> future = QtConcurrent::run([=](){UpdateIndex();});
 }
 
 void Volume::UpdateIndex(){
     WCHAR szRoot[_MAX_PATH];
     wsprintf(szRoot, TEXT("%c:"), m_drive);
 
-    USN_JOURNAL_DATA ujd;
-    Query(&ujd);
-
     BYTE pData[sizeof(DWORDLONG) * 0x10000];
     DWORD cb;
-    READ_USN_JOURNAL_DATA rujd = {m_StartUSN, 4294967295, 0, 0, 0, ujd.UsnJournalID};
+    DWORD reason_mask = USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME;
+    READ_USN_JOURNAL_DATA rujd = {m_StartUSN, reason_mask, 0, 0, 0, m_ujd.UsnJournalID};
 
     while (DeviceIoControl(m_hVol, FSCTL_READ_USN_JOURNAL, &rujd, sizeof(rujd), pData, sizeof(pData), &cb, NULL)){
+        if(cb == 8) break;
         PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
         while ((PBYTE) pRecord < (pData + cb)){
             wstring sz((LPCWSTR) ((PBYTE) pRecord + pRecord->FileNameOffset), pRecord->FileNameLength / sizeof(WCHAR));
-
             if ((pRecord->Reason & USN_REASON_FILE_CREATE) == USN_REASON_FILE_CREATE){
                 AddFile(pRecord->FileReferenceNumber, sz, pRecord->ParentFileReferenceNumber);
             }
@@ -271,6 +266,8 @@ DWORDLONG Volume::MakeFilter(wstring *szName)
 
 // searching
 int Volume::Find(wstring strQuery, vector<SearchResultFile> *rgsrfResults, int maxResults){
+    UpdateIndex();
+
     int nResults = 0; //Number of results in this search.
     if(strQuery.length() == 0) return nResults; //No query, just ignore this call
 

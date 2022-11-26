@@ -28,8 +28,6 @@ private:
 
     void initUI();
     void initSettingWidgets();
-signals:
-    void rebuildIndex();
 };
 
 #endif // SETTING_H

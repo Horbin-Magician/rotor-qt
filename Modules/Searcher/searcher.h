@@ -9,6 +9,7 @@
 #include <QScreen>
 #include <QDebug>
 #include <QKeyEvent>
+#include <QGraphicsDropShadowEffect>
 
 #include "../i_module.h"
 #include "FileData/file_data.h"

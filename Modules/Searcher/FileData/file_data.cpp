@@ -2,6 +2,8 @@
 #include <winioctl.h>
 #include <QDebug>
 #include <QThreadPool>
+#include <QApplication>
+//#include <QtConcurrent/QtConcurrent>
 
 #include "file_data.h"
 
@@ -39,6 +41,7 @@ void FindWork::stop(){
 FileData::FileData()
 {
     state = 0;
+//    connect(static_cast<QApplication *>(QCoreApplication::instance()), &QApplication::aboutToQuit, this, &FileData::aboutToQuit);
 }
 
 FileData::~FileData()
@@ -97,10 +100,13 @@ void FileData::onFindWorkFinished(QString filename, vector<SearchResultFile>* re
 }
 
 unsigned short FileData::initValidVols(){
+    DWORD dwBitMask = GetLogicalDrives();
     m_vols.empty();
-    for (int i=0; i<26; ++i ){
-        char cvol = i +'A';
-        if ( isNTFS(cvol) ) m_vols.append(cvol);
+    char vol = 'a';
+    while(dwBitMask != 0){
+        if(dwBitMask & 0x1) if ( isNTFS(vol) ) m_vols.append(vol);;
+        vol++;
+        dwBitMask >>= 1;
     }
     return m_vols.length();
 }

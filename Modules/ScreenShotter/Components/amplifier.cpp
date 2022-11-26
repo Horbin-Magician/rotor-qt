@@ -4,6 +4,7 @@
 #include <QPainter>
 #include <QGuiApplication>
 #include <QScreen>
+#include <QKeyEvent>
 
 Amplifier::Amplifier(std::shared_ptr<QPixmap> originPainting, QWidget *parent) :QWidget(parent){
     m_originPainting = originPainting;
@@ -15,9 +16,25 @@ Amplifier::Amplifier(std::shared_ptr<QPixmap> originPainting, QWidget *parent) :
     m_scaleRate = QGuiApplication::primaryScreen()->devicePixelRatio();
     m_sideLength = 120;
     m_imageHeight = 90;
-    setFixedSize(m_sideLength, m_sideLength);
+    setFixedSize(m_sideLength, m_imageHeight + 50);
+    // 设置默认值
+    m_colorType = 0;
+    m_colorStr = "";
 
     hide(); // 默认隐藏
+}
+
+int Amplifier::switchColorType()
+{
+    if(m_colorType == 0) m_colorType = 1;
+    else m_colorType = 0;
+    update();
+    return m_colorType;
+}
+
+QString Amplifier::getColorStr()
+{
+    return m_colorStr;
 }
 
 void Amplifier::onSizeChange(int w, int h) {
@@ -41,7 +58,6 @@ void Amplifier::onPostionChange(int x, int y) {
 
     move(dest_x, dest_y);
 }
-
 
 /// 绘制鼠标拖拽时选区矩形的右下顶点的放大图;
 void Amplifier::paintEvent(QPaintEvent *) {
@@ -90,10 +106,11 @@ void Amplifier::paintEvent(QPaintEvent *) {
     // 当前鼠标像素值的RGB信息
     QImage image = m_originPainting->toImage();
     QColor cursor_pixel = image.pixel(m_cursorPoint * m_scaleRate);
-    QString select_pt_rgb = QString("RGB:(%1,%2,%3)").arg(cursor_pixel.red()).arg(cursor_pixel.green()).arg(cursor_pixel.blue());
-
+    if(m_colorType == 0) m_colorStr = QString("RGB(%1,%2,%3)").arg(cursor_pixel.red()).arg(cursor_pixel.green()).arg(cursor_pixel.blue());
+    if(m_colorType == 1) m_colorStr = QString("HSV(%1,%2,%3)").arg(cursor_pixel.hue()).arg(cursor_pixel.saturation()).arg(cursor_pixel.value());
     // 绘制坐标轴相关数据
     painter.setPen(Qt::white);
     painter.drawText(QPoint(6, m_imageHeight + 14), select_screen_info);
-    painter.drawText(QPoint(6, m_imageHeight + 27), select_pt_rgb);
+    painter.drawText(QPoint(6, m_imageHeight + 28), m_colorStr);
+    painter.drawText(QPoint(6, m_imageHeight + 42), "Z键切换 C键复制");
 }

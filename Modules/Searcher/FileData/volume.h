@@ -58,13 +58,16 @@ public:
     void BuildIndex();
     void UpdateIndex();
     void StopFind();
+//    void Quit();
 private:
     HANDLE      m_hVol;			// handle to volume
     WCHAR       m_drive;		// drive letter of volume
     DWORDLONG   m_driveFRN;     // drive FileReferenceNumber
     FileMap     m_FileMap;
     bool        m_StopFind;
+//    bool        m_IfQuit;
     USN         m_StartUSN;
+    USN_JOURNAL_DATA m_ujd;
 
     void CleanUp();
     BOOL ReleaseIndex();

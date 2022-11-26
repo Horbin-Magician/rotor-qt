@@ -10,7 +10,7 @@
 #include "../i_module.h"
 
 
-class ShotterScreen;
+class ShotterWindow;
 class Amplifier;
 class QTimer;
 class QMenu;
@@ -18,7 +18,7 @@ class QMenu;
 /**
  * @brief The ScreenShotter class
  */
-class ScreenShotter : QWidget, IModule
+class ScreenShotter : public QWidget, IModule
 {
     Q_OBJECT
 signals:
@@ -31,10 +31,7 @@ public:
     void Shot();
 
 protected:
-    void mousePressEvent(QMouseEvent *);
-    void mouseReleaseEvent(QMouseEvent *e);
-    void mouseMoveEvent(QMouseEvent *e);
-    void keyPressEvent(QKeyEvent *e);
+    bool event(QEvent *);
     void paintEvent(QPaintEvent *);
 
 private:
@@ -45,11 +42,11 @@ private:
     std::shared_ptr<QPixmap> m_backgroundScreen; // 屏幕暗色背景图
     std::shared_ptr<QPixmap> m_originPainting; // 屏幕原画
 
-    QList<ShotterScreen*> m_screenToolList;
+    QList<ShotterWindow*> m_ShotterWindowList;
     std::shared_ptr<Amplifier> m_amplifierTool; // 放大取色器
 
     QPoint m_startPoint; // 用于检测误操作
-    QRect m_windowRect; // 当前鼠标选区最小的矩形窗口
+    QRectF m_windowRect; // 当前鼠标选区最小的矩形窗口
     QTimer* m_egoisticTimer; // 置顶定时器
 
     void CaptureScreen();
@@ -58,6 +55,9 @@ private:
     void initMeasureWidget(void); // 测量控件 (大小感知器)
     void updateMouseWindow(void);
     void endShot();
+
+    void onShotterWindowClose(ShotterWindow*);
+    void onShotterWindowMove(ShotterWindow*);
 };
 
 #endif // SCREENSHOTTER_H
