@@ -13,6 +13,7 @@
 ShotterWindow::ShotterWindow(std::shared_ptr<QPixmap> originPainting, QRectF windowRect, QWidget *parent):QWidget(parent)
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::Window | Qt::WindowStaysOnTopHint);
+    setWindowTitle("小云视窗");
 
     m_originPainting = originPainting->copy();
     m_isStickX = false;
@@ -117,6 +118,16 @@ DIRECTION ShotterWindow::getMouseRegion(const QPoint &cursor)
     return ret_dir;
 }
 
+bool ShotterWindow::event(QEvent *e)
+{
+    if(e->type() == QEvent::KeyPress){
+        QKeyEvent* keyEvent = (QKeyEvent*) e;
+        if (keyEvent->key() == Qt::Key_H) minimize(); // S键最小化
+        else keyEvent->ignore();
+    }
+    return QWidget::event(e);
+}
+
 // 在鼠标位置弹射出菜单栏
 void ShotterWindow::contextMenuEvent(QContextMenuEvent *)
 {
@@ -193,6 +204,9 @@ void ShotterWindow::paintEvent(QPaintEvent *)
     pen.setWidth(2);
     pen.setJoinStyle(Qt::MiterJoin);
     painter.setPen(pen);
+
+    painter.setRenderHint(QPainter::SmoothPixmapTransform);
+
     painter.drawPixmap(rect(), m_originPainting, m_windowRect); // 绘制截屏编辑窗口
     painter.drawRect(rect()); // 绘制边框线C
 }

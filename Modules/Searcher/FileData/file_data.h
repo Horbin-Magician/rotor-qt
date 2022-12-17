@@ -46,6 +46,7 @@ public:
     ~FileData();
     bool initVolumes();
     void findFile(QString filename);
+    void updateIndex();
 
     unsigned short state; // 0, created; 1, initing; 2, inited.
 private:

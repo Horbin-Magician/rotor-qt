@@ -49,7 +49,7 @@ protected:
 
                 foreach (HotKeyItem item, m_HotKeyList)
                     if(fuModifiers == item.fsModifiers & uVirtKey == item.vk)
-                        item.module->onHotkey();
+                        item.module->onHotkey(fuModifiers, uVirtKey);
             }
         }
         return QWidget::nativeEvent(eventType, message, result);

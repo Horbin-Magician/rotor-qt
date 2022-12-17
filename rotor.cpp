@@ -26,6 +26,8 @@ Rotor::Rotor(QObject *parent)
     m_hotkey = new HotKey();
     m_hotkey->RgtHotKey(L"seacher", MOD_SHIFT, (UINT)0x46, (IModule*) m_searcher);
     m_hotkey->RgtHotKey(L"screenShotter", MOD_SHIFT, (UINT)0x43, (IModule*) m_screenShotter);
+    m_hotkey->RgtHotKey(L"screenShotter_H", MOD_SHIFT, (UINT)0x48, (IModule*) m_screenShotter);
+
 
     m_menu = new QMenu();
     connect(addAction("设置"), &QAction::triggered, m_setting, &Setting::show);
@@ -54,7 +56,7 @@ void Rotor::activeTray(QSystemTrayIcon::ActivationReason reason)
     switch (reason)
     {
         case QSystemTrayIcon::Context: m_menu->show();break; // right click show menu
-        case QSystemTrayIcon::Trigger: m_searcher->SwitchShow();break; // click show searcher
+        case QSystemTrayIcon::Trigger: m_searcher->switchShow();break; // click show searcher
         default: break;
     }
 }

@@ -22,17 +22,13 @@ class Searcher : public QWidget, IModule
 public:
     Searcher(QWidget *parent = 0);
 
-    void SwitchShow();
+    void switchShow();
     void initFileData();
-    virtual void onHotkey();
-
-public slots:
-    bool eventFilter(QObject *obj, QEvent * event);
-
+    virtual void onHotkey(unsigned int fsModifiers, unsigned int  vk);
 protected:
     void onTextChanged(const QString &text);
     void onSearchResultUpdate(const QString filename, const vector<SearchResultFile> &filepaths);
-
+    bool event(QEvent *);
 private:
     void initUI();
 

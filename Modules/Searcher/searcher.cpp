@@ -3,39 +3,9 @@
 
 Searcher::Searcher(QWidget *parent): QWidget(parent){
     m_fileData = nullptr;
+
     Searcher::initFileData();
     Searcher::initUI();
-    installEventFilter(this);
-}
-
-void Searcher::SwitchShow(){
-    if(this->isVisible()) this->hide();
-    else{
-        show();
-        m_lineEdit->activateWindow();
-        m_lineEdit->clear();
-    }
-}
-
-bool Searcher::eventFilter(QObject *obj, QEvent * event){
-    if (obj == Q_NULLPTR) return false;
-    // if lose focus
-    if (event->type() == QEvent::ActivationChange) {
-        if(QApplication::activeWindow() != this) this->hide();
-    }
-    // if key press
-    if (event->type() == QEvent::KeyPress) {
-       QKeyEvent *keyEvent = (QKeyEvent*)event;
-       // Esc, hide
-       if (keyEvent->key() == Qt::Key_Escape) this->hide();
-       // Enter, open file
-       else if(keyEvent->key() == Qt::Key_Return) m_searchResultList->openCurrent();
-       // Up, previous file
-       else if(keyEvent->key() == Qt::Key_Up) m_searchResultList->up();
-       // Down, next file
-       else if(keyEvent->key() == Qt::Key_Down) m_searchResultList->down();
-    }
-    return QWidget::eventFilter(obj, event);
 }
 
 // init filedata and its volumes
@@ -45,11 +15,6 @@ void Searcher::initFileData(){
     m_fileData = new FileData();
     m_fileData->initVolumes();
     connect(m_fileData, &FileData::updateSearchResult, this, &Searcher::onSearchResultUpdate);
-}
-
-void Searcher::onHotkey()
-{
-    SwitchShow();
 }
 
 void Searcher::initUI(){
@@ -80,6 +45,41 @@ void Searcher::initUI(){
     m_searchResultList = new SearchResultList(this);
     m_searchResultList->hide();
     m_layout->addWidget(m_searchResultList);
+}
+
+bool Searcher::event(QEvent *event)
+{
+    if (event->type() == QEvent::ActivationChange) {
+        if(QApplication::activeWindow() != this) this->hide();
+    }
+    // if key press
+    if (event->type() == QEvent::KeyPress) {
+       QKeyEvent *keyEvent = (QKeyEvent*)event;
+       // Esc, hide
+       if (keyEvent->key() == Qt::Key_Escape) this->hide();
+       // Enter, open file
+       else if(keyEvent->key() == Qt::Key_Return) m_searchResultList->openCurrent();
+       // Up, previous file
+       else if(keyEvent->key() == Qt::Key_Up) m_searchResultList->up();
+       // Down, next file
+       else if(keyEvent->key() == Qt::Key_Down) m_searchResultList->down();
+    }
+    return QWidget::event(event);
+}
+
+void Searcher::onHotkey(unsigned int fsModifiers, unsigned int  vk)
+{
+    switchShow();
+}
+
+void Searcher::switchShow(){
+    if(this->isVisible()) this->hide();
+    else{
+        show();
+        m_fileData->updateIndex();
+        m_lineEdit->activateWindow();
+        m_lineEdit->clear();
+    }
 }
 
 void Searcher::onTextChanged(const QString &text){

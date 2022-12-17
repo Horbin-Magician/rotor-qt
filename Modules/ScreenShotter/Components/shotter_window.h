@@ -19,6 +19,7 @@ public:
     void stick(STICK_TYPE, ShotterWindow*);
 
 protected:
+    bool event(QEvent *);
     void contextMenuEvent(QContextMenuEvent *e); // 呼出菜单事件
     void mousePressEvent(QMouseEvent *e); // 鼠标按下事件
     void mouseReleaseEvent(QMouseEvent *e); // 鼠标释放事件

@@ -21,6 +21,7 @@
 ScreenShotter::ScreenShotter(QWidget *parent) : QWidget(parent)
 {
     m_state = 0;
+    m_isHidden = false;
     m_backgroundScreen = nullptr;
     m_originPainting = nullptr;
     m_desktopRect = QGuiApplication::primaryScreen()->geometry(); // 获取设备屏幕大小
@@ -28,23 +29,39 @@ ScreenShotter::ScreenShotter(QWidget *parent) : QWidget(parent)
     initWindow(); // 初始化窗口
 }
 
-void ScreenShotter::onHotkey()
+void ScreenShotter::onHotkey(unsigned int fsModifiers, unsigned int  vk)
 {
     if(m_state == 1)return;
-    Shot();
+    if(vk == (UINT)0x43) Shot();
+    else if(vk == (UINT)0x48) HideAll();
 }
 
 // 开始截图
 void ScreenShotter::Shot()
 {
     m_state = 1;
-    CaptureScreen(); // 捕获屏幕
+    CaptureScreen(m_originPainting, m_backgroundScreen); // 捕获屏幕
     initAmplifier(); // 初始化鼠标放大器
     emit cursorPosChange(cursor().pos().x(), cursor().pos().y()); // 更新鼠标的位置
     updateMouseWindow(); // 更新鼠标区域窗口
     show(); // 展示窗口
     this->activateWindow();
     this->setFocus();
+}
+
+void ScreenShotter::HideAll()
+{
+    bool ifMinimize = false;
+    foreach (ShotterWindow* win, m_ShotterWindowList) {
+        if(win->windowState() != Qt::WindowMinimized){
+            ifMinimize = true;
+            break;
+        }
+    }
+    foreach (ShotterWindow* win, m_ShotterWindowList) {
+        if(ifMinimize == true) win->minimize();
+        else win->setWindowState(Qt::WindowNoState);
+    }
 }
 
 // 绘制背景和选区
@@ -75,6 +92,7 @@ bool ScreenShotter::event(QEvent *e)
     if(e->type() == QEvent::KeyPress){
         QKeyEvent* keyEvent = (QKeyEvent*) e;
         if (keyEvent->key() == Qt::Key_Escape) endShot(); // Esc键退出截图
+        else if (keyEvent->key() == Qt::Key_H) SwitcHideShotterWin();// 隐藏其他窗口
         else if (keyEvent->key() == Qt::Key_Z) m_amplifierTool->switchColorType(); // Z键切换颜色
         else if (keyEvent->key() == Qt::Key_C){ // C键复制颜色
             QString colorStr = m_amplifierTool->getColorStr();
@@ -107,16 +125,16 @@ bool ScreenShotter::event(QEvent *e)
 }
 
 // 捕获屏幕
-void ScreenShotter::CaptureScreen()
+void ScreenShotter::CaptureScreen(std::shared_ptr<QPixmap>& originPainting, std::shared_ptr<QPixmap>& backgroundScreen)
 {
     QScreen *screen = QGuiApplication::primaryScreen(); // 截取当前桌面，作为截屏的背景图
     // 抓取原始屏幕
-    m_originPainting.reset(new QPixmap(screen->grabWindow(0, m_desktopRect.x(), m_desktopRect.y(), m_desktopRect.width(),m_desktopRect.height())));
+    originPainting.reset(new QPixmap(screen->grabWindow(0, m_desktopRect.x(), m_desktopRect.y(), m_desktopRect.width(),m_desktopRect.height())));
     // 制作暗色屏幕背景
-    QPixmap temp_dim_pix(m_originPainting->width(), m_originPainting->height());
+    QPixmap temp_dim_pix(originPainting->width(), originPainting->height());
     temp_dim_pix.fill((QColor(0, 0, 0, 160)));
-    m_backgroundScreen.reset(new QPixmap(*m_originPainting));
-    QPainter p(m_backgroundScreen.get());
+    backgroundScreen.reset(new QPixmap(*originPainting));
+    QPainter p(backgroundScreen.get());
     p.drawPixmap(0, 0, temp_dim_pix);
 }
 
@@ -150,6 +168,7 @@ void ScreenShotter::initWindow()
     setGeometry(m_desktopRect); // 窗口与显示屏对齐
     setMouseTracking(true); // 开启鼠标实时追踪
     setFocusPolicy(Qt::StrongFocus);
+    this->setCursor(QCursor(Qt::CrossCursor));
     hide();
 }
 
@@ -168,6 +187,9 @@ void ScreenShotter::endShot()
     m_amplifierTool->hide(); // 隐藏放大器
     this->hide();
     m_state = 0;
+    foreach (ShotterWindow* win, m_ShotterWindowList) win->show();
+    m_ShotterWindowList.last()->raise();
+    m_isHidden = false;
 }
 
 void ScreenShotter::onShotterWindowClose(ShotterWindow * shotterWindow)
@@ -183,19 +205,37 @@ void ScreenShotter::onShotterWindowMove(ShotterWindow * shotterWindow)
             QRect rectB = otherWin->geometry();
             int padding = 10;
 
-            if( qAbs(rectA.right() - rectB.left()) < padding) shotterWindow->stick(STICK_TYPE::RIGHT_LEFT, otherWin);
-            else if( qAbs(rectA.right() - rectB.right()) < padding) shotterWindow->stick(STICK_TYPE::RIGHT_RIGHT, otherWin);
-            else if( qAbs(rectA.left() - rectB.right()) < padding) shotterWindow->stick(STICK_TYPE::LEFT_RIGHT, otherWin);
-            else if( qAbs(rectA.left() - rectB.left()) < padding) shotterWindow->stick(STICK_TYPE::LEFT_LEFT, otherWin);
+            if(!(rectA.top() > rectB.bottom()) && !(rectA.bottom() < rectB.top())){
+                if( qAbs(rectA.right() - rectB.left()) < padding)
+                    shotterWindow->stick(STICK_TYPE::RIGHT_LEFT, otherWin);
+                else if( qAbs(rectA.right() - rectB.right()) < padding)
+                    shotterWindow->stick(STICK_TYPE::RIGHT_RIGHT, otherWin);
+                else if( qAbs(rectA.left() - rectB.right()) < padding)
+                    shotterWindow->stick(STICK_TYPE::LEFT_RIGHT, otherWin);
+                else if( qAbs(rectA.left() - rectB.left()) < padding)
+                    shotterWindow->stick(STICK_TYPE::LEFT_LEFT, otherWin);
+            }
 
-            if( qAbs(rectA.top() - rectB.bottom()) < padding) shotterWindow->stick(STICK_TYPE::UPPER_LOWER, otherWin);
-            else if( qAbs(rectA.bottom() - rectB.top()) < padding) shotterWindow->stick(STICK_TYPE::LOWER_UPPER, otherWin);
-            else if( qAbs(rectA.top() - rectB.top()) < padding) shotterWindow->stick(STICK_TYPE::UPPER_UPPER, otherWin);
-            else if( qAbs(rectA.bottom() - rectB.bottom()) < padding) shotterWindow->stick(STICK_TYPE::LOWER_LOWER, otherWin);
+            if(!(rectA.right() < rectB.left()) && !(rectA.left() > rectB.right())){
+                if( qAbs(rectA.top() - rectB.bottom()) < padding)
+                    shotterWindow->stick(STICK_TYPE::UPPER_LOWER, otherWin);
+                else if( qAbs(rectA.bottom() - rectB.top()) < padding)
+                    shotterWindow->stick(STICK_TYPE::LOWER_UPPER, otherWin);
+                else if( qAbs(rectA.top() - rectB.top()) < padding)
+                    shotterWindow->stick(STICK_TYPE::UPPER_UPPER, otherWin);
+                else if( qAbs(rectA.bottom() - rectB.bottom()) < padding)
+                    shotterWindow->stick(STICK_TYPE::LOWER_LOWER, otherWin);
+            }
         }
     }
 }
 
-
-
+void ScreenShotter::SwitcHideShotterWin(){
+    if(m_isHidden == false){
+        endShot();
+        foreach (ShotterWindow* win, m_ShotterWindowList) win->hide();
+        m_isHidden = true;
+        Shot();
+    }
+}
 

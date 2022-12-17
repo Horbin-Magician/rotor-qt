@@ -5,7 +5,7 @@
 class IModule
 {
 public:
-    virtual void onHotkey();
+    virtual void onHotkey(unsigned int fsModifiers, unsigned int  vk);
 };
 
 #endif // IMODEL_H

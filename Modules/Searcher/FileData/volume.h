@@ -12,13 +12,11 @@ struct File
 {
     wstring filename;
     DWORDLONG parentIndex;
-    DWORDLONG filter;
     char rank;
 
-    File(const DWORDLONG aParentIndex=0, const wstring aFilename=TEXT(""), const DWORDLONG aFilter=0, const char aRank=0)
+    File(const DWORDLONG aParentIndex=0, const wstring aFilename=TEXT(""), const char aRank=0)
     {
         parentIndex = aParentIndex;
-        filter = aFilter;
         rank = aRank;
         filename = aFilename;
     }
@@ -54,18 +52,16 @@ class Volume {
 public:
     Volume(WCHAR cDrive);
     ~Volume();
-    int Find(wstring strQuery, vector<SearchResultFile> *rgsrfResults, int maxResults = 5000);
+    vector<SearchResultFile>* Find(wstring strQuery);
     void BuildIndex();
     void UpdateIndex();
     void StopFind();
-//    void Quit();
 private:
     HANDLE      m_hVol;			// handle to volume
     WCHAR       m_drive;		// drive letter of volume
     DWORDLONG   m_driveFRN;     // drive FileReferenceNumber
     FileMap     m_FileMap;
     bool        m_StopFind;
-//    bool        m_IfQuit;
     USN         m_StartUSN;
     USN_JOURNAL_DATA m_ujd;
 
@@ -79,7 +75,6 @@ private:
     BOOL AddFile(DWORDLONG Index, wstring filename, DWORDLONG ParentIndex);
     BOOL GetPath(DWORDLONG Index, wstring *sz);
 
-    DWORDLONG MakeFilter(wstring *szName);
     char GetFileRank(wstring *filename);
 };
 

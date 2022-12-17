@@ -3,7 +3,6 @@
 #include <QDebug>
 #include <QThreadPool>
 #include <QApplication>
-//#include <QtConcurrent/QtConcurrent>
 
 #include "file_data.h"
 
@@ -29,8 +28,8 @@ FindWork::FindWork(Volume *volume, QString filename)
 }
 
 void FindWork::run(){
-    vector<SearchResultFile>* result = new vector<SearchResultFile>();
-    m_volume->Find(m_filename.toStdWString(), result);
+    vector<SearchResultFile>* result;
+    result = m_volume->Find(m_filename.toStdWString());
     emit finished(m_filename, result);
 }
 
@@ -41,7 +40,7 @@ void FindWork::stop(){
 FileData::FileData()
 {
     state = 0;
-//    connect(static_cast<QApplication *>(QCoreApplication::instance()), &QApplication::aboutToQuit, this, &FileData::aboutToQuit);
+    m_findingName = NULL;
 }
 
 FileData::~FileData()
@@ -64,12 +63,10 @@ bool FileData::initVolumes()
 
 void FileData::findFile(QString filename)
 {
-    emit stopFind();
     if(state != 2 || m_findingName == filename) return;
+    emit stopFind(); // TODO 检查是否安全
 
     m_findingName = filename;
-    if(filename.isEmpty()) return;
-
     m_findingResult.clear();
     m_waitingFinder = m_volumes.length();
 
@@ -78,6 +75,13 @@ void FileData::findFile(QString filename)
         connect(work, &FindWork::finished, this, &FileData::onFindWorkFinished);
         connect(this, &FileData::stopFind, work, &FindWork::stop);
         QThreadPool::globalInstance()->start(work);
+    }
+}
+
+void FileData::updateIndex()
+{
+    for(Volume* volume: m_volumes){
+        volume->UpdateIndex();
     }
 }
 
