@@ -57,6 +57,7 @@ public:
     void UpdateIndex();
     void StopFind();
 private:
+    unsigned short m_state;
     HANDLE      m_hVol;			// handle to volume
     WCHAR       m_drive;		// drive letter of volume
     DWORDLONG   m_driveFRN;     // drive FileReferenceNumber

@@ -1,12 +1,14 @@
+<p align="center"><a href="https://github.com/Horbin-Magician/Rotor" target="_blank" rel="noopener noreferrer"><img width="100" src="https://fluctus.cc/static/build/favicon.ico" alt="Rotor logo"></a></p>
+
 # Introduce
 
 Rotor is a "**fast**", "**low occupancy**" and **free** **tools box** running in windows. (Double quotes because it is far from the goal)
 
-The plan is that Rotor will include an Everything-like **global file search** function, a **screenshot** function, and a dictionary function. But for now, there is only not bad file search function.
+Now, Rotor include an Everything-like **global file search** module, a **screenshot** module. 
 
 Admittedly, there are already many similar products, and most of them do better, but they still have some problems.
 
-Most importantly, Rotor is an open source software!
+I think an open source software to bring these small tools together is very necessary.
 
 ## File Searching
 
@@ -17,11 +19,8 @@ Most importantly, Rotor is an open source software!
 
 ## Screenshot
 
-Coming soon...
-
-## Dictionary
-
-Coming soon...
+1. The shortcut key to printscreen is Shift+C, which is not yet customizable.
+2. By default, the captured image is fixed to the screen, and right-clicking the image will open a right-click menu.
 
 # Contribution
 
@@ -30,46 +29,6 @@ This project is builded by Qt6.2.4.
 I sincerely hope that you can provide quality code for this project, and I hope that you will not mind my terrible code.
 
 # License
-
-[MIT](https://opensource.org/licenses/MIT)
-
----
-
-# 简介
-
-这是一款“**快速**”、“**低占用**”以及**免费**的Windwos平台**工具集**。（因为远没有达到目标，所以带上了双引号）
-
-在计划中，小云管家将包含类Everything的**全局文件搜索**功能、**截图**功能、**查词**功能。但目前还仅有堪堪够用的文件搜索功能。
-
-诚然，网上已经有很多相似的软件，且大部分做得更好，但它们或多或少存在着一些问题。
-
-最重要的是，小云管家是一款开源软件！
-
-## 文件搜索
-
-1. 显示搜索窗口的快捷键为Shift+F，目前还暂不支持自定义。
-
-2. 接下来在搜索窗口中输入任意信息便能立刻获得搜索结果。
-
-3. 上下键可以选择结果，回车键打开文件。
-
-4. 右键点击结果项会打开右键菜单，右键菜单中目前仅提供打开文件所在目录的功能。
-
-## 截图
-
-敬请期待...
-
-## 查词
-
-敬请期待...
-
-# 贡献代码
-
-这个项目有Qt6.2.4构建。
-
-我真诚的希望大家能够为这个项目提供优质的代码，也希望大家不要嫌弃我的代码。
-
-# 许可
 
 [MIT](https://opensource.org/licenses/MIT)
 

@@ -11,6 +11,7 @@
 // Constructor
 Volume::Volume(WCHAR drive)
 {
+    m_state = 0;
     m_StopFind = false;
     // Initialize member variables
     m_drive = drive; // drive letter of volume
@@ -60,6 +61,8 @@ BOOL Volume::Query(PUSN_JOURNAL_DATA pUsnJournalData){
 
 // Enumerate the MFT for all entries. Store the file reference numbers of any directories in the database.
 void Volume::BuildIndex(){
+    if(m_state > 0) return;
+    m_state = 1;
     QElapsedTimer timedebuge;
     timedebuge.start();
 
@@ -91,6 +94,7 @@ void Volume::BuildIndex(){
         med.StartFileReferenceNumber = * (USN *) pData;
     }
     ReduceIndex();
+    m_state = 0;
     qDebug()<<(char)m_drive<<"构建耗时："<<timedebuge.elapsed()<<"ms";
 }
 
@@ -130,6 +134,8 @@ void Volume::ReduceIndex(){
 }
 
 void Volume::UpdateIndex(){
+    if(m_state > 0) return;
+    m_state = 2;
     WCHAR szRoot[_MAX_PATH];
     wsprintf(szRoot, TEXT("%c:"), m_drive);
 
@@ -156,6 +162,7 @@ void Volume::UpdateIndex(){
         }
         rujd.StartUsn = *(USN *)&pData;
     }
+    m_state = 0;
 }
 
 void Volume::StopFind(){
@@ -172,23 +179,24 @@ BOOL Volume::AddFile(DWORDLONG index, wstring filename, DWORDLONG parentIndex){
 
 // searching
 vector<SearchResultFile>* Volume::Find(wstring strQuery){
+    if(m_state > 0 || strQuery.length() == 0) return nullptr;
     vector<SearchResultFile>* rgsrfResults = new vector<SearchResultFile>();
-    if(strQuery.length() == 0) return rgsrfResults; //No query, just ignore this call
 
     //Create lower query string for case-insensitive search
     for(unsigned int j = 0; j != strQuery.length(); ++j)
         strQuery[j] = tolower(strQuery[j]);
 
+    unsigned int foundNum = 0;
     for(QMap<DWORDLONG, File>::iterator it = m_FileMap.begin(); it != m_FileMap.end(); ++it){
         if(m_StopFind){
             m_StopFind = false;
             delete rgsrfResults;
             return nullptr;
         }
-
         wstring szLower = it->filename;
         for(unsigned int j = 0; j != szLower.length(); ++j)
             szLower[j] = tolower(szLower[j]);
+
         if(szLower.find(strQuery) != -1){
             SearchResultFile srf;
             srf.path.reserve(MAX_PATH);
@@ -197,8 +205,11 @@ vector<SearchResultFile>* Volume::Find(wstring strQuery){
                 srf.rank = it->rank;
                 rgsrfResults->insert(rgsrfResults->end(), srf);
             }
+            foundNum++;
+            if(foundNum > 10000) break; // 当搜索数高于该值时停止搜索，以防用时过长。
         }
     }
+    m_state = 0;
     return rgsrfResults;
 }
 
@@ -212,7 +223,7 @@ BOOL Volume::GetPath(DWORDLONG index, wstring *sz)
         *sz = file.filename + TEXT("\\") + *sz;
         index = file.parentIndex;
     };
-    return(TRUE);
+    return TRUE;
 }
 
 // return rank by filename

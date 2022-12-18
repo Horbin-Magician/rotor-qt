@@ -94,13 +94,14 @@ void FileData::onInitVolumeWorkFinished(Volume *volume)
 
 void FileData::onFindWorkFinished(QString filename, vector<SearchResultFile>* result)
 {
-    if( filename != this->m_findingName) return;
+    if(result == nullptr || filename != this->m_findingName) return;
     m_findingResult.insert(m_findingResult.end(), result->begin(), result->end());
     if(--m_waitingFinder == 0){
         sort(m_findingResult.begin(), m_findingResult.end());
         emit updateSearchResult(filename, m_findingResult);
     }
     delete result;
+    result = nullptr;
 }
 
 unsigned short FileData::initValidVols(){

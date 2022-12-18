@@ -207,8 +207,9 @@ void ShotterWindow::paintEvent(QPaintEvent *)
 
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
 
+    QRect windowRect = rect();
     painter.drawPixmap(rect(), m_originPainting, m_windowRect); // 绘制截屏编辑窗口
-    painter.drawRect(rect()); // 绘制边框线C
+    painter.drawRect(windowRect.x()+1, windowRect.y()+1, windowRect.width()-2, windowRect.height()-2); // 绘制边框线C
 }
 
 void ShotterWindow::wheelEvent(QWheelEvent *e)

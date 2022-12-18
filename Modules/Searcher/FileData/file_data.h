@@ -49,6 +49,7 @@ public:
     void updateIndex();
 
     unsigned short state; // 0, created; 1, initing; 2, inited.
+
 private:
     QList<char> m_vols;
     QList<Volume*> m_volumes;

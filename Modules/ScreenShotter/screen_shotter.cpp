@@ -194,6 +194,7 @@ void ScreenShotter::endShot()
 
 void ScreenShotter::onShotterWindowClose(ShotterWindow * shotterWindow)
 {
+    delete shotterWindow;
     m_ShotterWindowList.removeAll(shotterWindow);
 }
 
