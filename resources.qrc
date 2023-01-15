@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/picture">
         <file>Resources/favicon.ico</file>
+        <file>Resources/iconfont.ttf</file>
     </qresource>
     <qresource prefix="/qt/etc">
         <file>qt.conf</file>

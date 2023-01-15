@@ -2,6 +2,8 @@
 #define VOLUME_H
 
 #include <QMap>
+#include <QFile>
+#include <QApplication>
 #include <string>
 #include <Windows.h>
 #include <WinIoCtl.h>
@@ -10,13 +12,15 @@ using namespace std;
 
 struct File
 {
-    wstring filename;
     DWORDLONG parentIndex;
-    char rank;
+    QString filename;
+    DWORD filter;
+    short rank;
 
-    File(const DWORDLONG aParentIndex=0, const wstring aFilename=TEXT(""), const char aRank=0)
+    File(const DWORDLONG aParentIndex=0, const QString aFilename="", const DWORD aFilter=0, const short aRank=0)
     {
         parentIndex = aParentIndex;
+        filter = aFilter;
         rank = aRank;
         filename = aFilename;
     }
@@ -24,8 +28,8 @@ struct File
 
 struct SearchResultFile
 {
-    wstring filename;
-    wstring path;
+    QString filename;
+    QString path;
     char rank;
 
     bool operator<(const SearchResultFile& i){
@@ -52,12 +56,14 @@ class Volume {
 public:
     Volume(WCHAR cDrive);
     ~Volume();
-    vector<SearchResultFile>* Find(wstring strQuery);
+    vector<SearchResultFile>* Find(QString strQuery);
     void BuildIndex();
     void UpdateIndex();
     void StopFind();
+
+    void SerializationWrite();
 private:
-    unsigned short m_state;
+    unsigned short m_state;     // 0:free 1:build 2:update 3:Serialization
     HANDLE      m_hVol;			// handle to volume
     WCHAR       m_drive;		// drive letter of volume
     DWORDLONG   m_driveFRN;     // drive FileReferenceNumber
@@ -67,16 +73,19 @@ private:
     USN_JOURNAL_DATA m_ujd;
 
     void CleanUp();
-    BOOL ReleaseIndex();
+    bool ReleaseIndex();
     void ReduceIndex();
 
+    void SerializationRead();
+
     HANDLE Open(WCHAR cDriveLetter, DWORD dwAccess);
-    BOOL Query(PUSN_JOURNAL_DATA pUsnJournalData);
+    bool Query(PUSN_JOURNAL_DATA pUsnJournalData);
 
-    BOOL AddFile(DWORDLONG Index, wstring filename, DWORDLONG ParentIndex);
-    BOOL GetPath(DWORDLONG Index, wstring *sz);
+    DWORD MakeFilter(QString* str);
+    bool AddFile(DWORDLONG Index, QString filename, DWORDLONG ParentIndex);
+    bool GetPath(DWORDLONG Index, QString *sz);
 
-    char GetFileRank(wstring *filename);
+    short GetFileRank(QString *filename);
 };
 
 #endif // VOLUME_H

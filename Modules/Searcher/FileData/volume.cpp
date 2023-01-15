@@ -38,7 +38,7 @@ void Volume::CleanUp()
 }
 
 // Clears the database
-BOOL Volume::ReleaseIndex()
+bool Volume::ReleaseIndex()
 {
     m_FileMap.clear();
     return TRUE;
@@ -53,7 +53,7 @@ HANDLE Volume::Open(TCHAR cDriveLetter, DWORD dwAccess){
 }
 
 // Return statistics about the journal on the current volume
-BOOL Volume::Query(PUSN_JOURNAL_DATA pUsnJournalData){
+bool Volume::Query(PUSN_JOURNAL_DATA pUsnJournalData){
     DWORD cb;
     BOOL fOk = DeviceIoControl(m_hVol, FSCTL_QUERY_USN_JOURNAL, NULL, 0, pUsnJournalData, sizeof(*pUsnJournalData), &cb, NULL);
     return(fOk);
@@ -63,8 +63,6 @@ BOOL Volume::Query(PUSN_JOURNAL_DATA pUsnJournalData){
 void Volume::BuildIndex(){
     if(m_state > 0) return;
     m_state = 1;
-    QElapsedTimer timedebuge;
-    timedebuge.start();
 
     ReleaseIndex();
 
@@ -74,7 +72,8 @@ void Volume::BuildIndex(){
     // add the root directory
     WCHAR szRoot[_MAX_PATH];
     wsprintf(szRoot, TEXT("%c:"), m_drive);
-    AddFile(m_driveFRN, (wstring)szRoot, 0);
+    QString rootName = QString::fromWCharArray(szRoot);
+    AddFile(m_driveFRN, rootName, 0);
 
     MFT_ENUM_DATA med;
     med.StartFileReferenceNumber = 0;
@@ -88,14 +87,14 @@ void Volume::BuildIndex(){
         PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
         while ((PBYTE) pRecord < (pData + cb)){
             wstring sz((LPCWSTR) ((PBYTE) pRecord + pRecord->FileNameOffset), pRecord->FileNameLength / sizeof(WCHAR));
-            AddFile(pRecord->FileReferenceNumber, sz, pRecord->ParentFileReferenceNumber);
+            QString fileName = QString::fromStdWString(sz);
+            AddFile(pRecord->FileReferenceNumber, fileName, pRecord->ParentFileReferenceNumber);
             pRecord = (PUSN_RECORD) ((PBYTE) pRecord + pRecord->RecordLength);
         }
         med.StartFileReferenceNumber = * (USN *) pData;
     }
     ReduceIndex();
     m_state = 0;
-    qDebug()<<(char)m_drive<<"构建耗时："<<timedebuge.elapsed()<<"ms";
 }
 
 // Delete ignored and useless index
@@ -104,16 +103,17 @@ void Volume::ReduceIndex(){
     QStringList ignoredPathList = settingModel.getIgnoredPath();
 
     for(FileMap::iterator it = m_FileMap.begin();it != m_FileMap.end();){
-        wstring path;
-        wstring filename = it->filename;
+        QString path;
+        QString filename = it->filename;
         // del ignored path
         bool ifFound = false;
         for(int i=0; i < ignoredPathList.length(); i++){
             if(ifFound == false){
-                wstring strQuery = ignoredPathList[i].toStdWString();
+                QString strQuery = ignoredPathList[i];
                 QStringList splitList = ignoredPathList[i].split('\\');
-                wstring nameQuery = splitList[splitList.length()-1].toStdWString();
-                if(filename == nameQuery && GetPath(it->parentIndex, &path)){
+                QString nameQuery = splitList[splitList.length()-1];
+                DWORD queryFilter = MakeFilter(&nameQuery);
+                if(it->filter == queryFilter && filename == nameQuery && GetPath(it->parentIndex, &path)){
                     if(path + filename == strQuery) ifFound = true;
                 }
             }
@@ -124,7 +124,7 @@ void Volume::ReduceIndex(){
 
     for(FileMap::iterator it = m_FileMap.begin();it != m_FileMap.end();){
         // del file with ignored path or useless
-        wstring path;
+        QString path;
         if(GetPath(it->parentIndex, &path) == FALSE){
             it = m_FileMap.erase(it);
             continue;
@@ -136,6 +136,8 @@ void Volume::ReduceIndex(){
 void Volume::UpdateIndex(){
     if(m_state > 0) return;
     m_state = 2;
+    if(m_FileMap.isEmpty()) SerializationRead();
+
     WCHAR szRoot[_MAX_PATH];
     wsprintf(szRoot, TEXT("%c:"), m_drive);
 
@@ -144,24 +146,28 @@ void Volume::UpdateIndex(){
     DWORD reason_mask = USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME;
     READ_USN_JOURNAL_DATA rujd = {m_StartUSN, reason_mask, 0, 0, 0, m_ujd.UsnJournalID};
 
+    qDebug()<<m_StartUSN;
+
     while (DeviceIoControl(m_hVol, FSCTL_READ_USN_JOURNAL, &rujd, sizeof(rujd), pData, sizeof(pData), &cb, NULL)){
         if(cb == 8) break;
         PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
         while ((PBYTE) pRecord < (pData + cb)){
             wstring sz((LPCWSTR) ((PBYTE) pRecord + pRecord->FileNameOffset), pRecord->FileNameLength / sizeof(WCHAR));
+            QString fileName = QString::fromStdWString(sz);
             if ((pRecord->Reason & USN_REASON_FILE_CREATE) == USN_REASON_FILE_CREATE){
-                AddFile(pRecord->FileReferenceNumber, sz, pRecord->ParentFileReferenceNumber);
+                AddFile(pRecord->FileReferenceNumber, fileName, pRecord->ParentFileReferenceNumber);
             }
             else if ((pRecord->Reason & USN_REASON_FILE_DELETE) == USN_REASON_FILE_DELETE){
                 m_FileMap.remove(pRecord->FileReferenceNumber);
             }
             else if ((pRecord->Reason & USN_REASON_RENAME_NEW_NAME) == USN_REASON_RENAME_NEW_NAME){
-                AddFile(pRecord->FileReferenceNumber, sz, pRecord->ParentFileReferenceNumber);
+                AddFile(pRecord->FileReferenceNumber, fileName, pRecord->ParentFileReferenceNumber);
             }
             pRecord = (PUSN_RECORD) ((PBYTE) pRecord + pRecord->RecordLength);
         }
         rujd.StartUsn = *(USN *)&pData;
     }
+    m_StartUSN = rujd.StartUsn;
     m_state = 0;
 }
 
@@ -169,22 +175,72 @@ void Volume::StopFind(){
     m_StopFind = true;
 }
 
+void Volume::SerializationWrite()
+{
+    if(m_state > 0 || m_FileMap.isEmpty()) return;
+    m_state = 3;
+
+    QString appPath = QApplication::applicationDirPath(); // get programe path
+    QFile file(appPath + "/userdata/" + m_drive + ".fd");
+    file.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QDataStream out(&file);
+
+    QMapIterator<DWORDLONG, File> i(m_FileMap);
+    while (i.hasNext()){
+        i.next();
+        File filedata = i.value();
+        out<<i.key()<<filedata.parentIndex<<filedata.filename<<(quint32)filedata.filter<<filedata.rank;
+    }
+    ReleaseIndex();
+    file.close();
+    m_state = 0;
+}
+
+void Volume::SerializationRead()
+{
+    if(m_state > 0 && m_state != 2) return;
+    m_state = 3;
+
+    QString appPath = QApplication::applicationDirPath(); // get programe path
+    QFile file(appPath + "/userdata/" + m_drive + ".fd");
+    file.open(QIODevice::ReadOnly);
+    QDataStream in(&file);
+
+    DWORDLONG index;
+    DWORDLONG parentIndex;
+    QString filename;
+    quint32 filter;
+    short rank;
+
+    while(in.atEnd() == false){
+        in>>index>>parentIndex>>filename>>filter>>rank;
+        File insertFile(parentIndex, filename, filter, rank);
+        m_FileMap[index] = insertFile;
+    }
+
+    file.close();
+    m_state = 0;
+}
+
 // Adds a file to the database
-BOOL Volume::AddFile(DWORDLONG index, wstring filename, DWORDLONG parentIndex){
-    char rank = GetFileRank(&filename);
-    File insertFile(parentIndex, filename, rank);
+bool Volume::AddFile(DWORDLONG index, QString filename, DWORDLONG parentIndex){
+    DWORD filter = MakeFilter(&filename);
+    short rank = GetFileRank(&filename);
+    File insertFile(parentIndex, filename, filter, rank);
     m_FileMap[index] = insertFile;
     return(TRUE);
 }
 
 // searching
-vector<SearchResultFile>* Volume::Find(wstring strQuery){
+vector<SearchResultFile>* Volume::Find(QString strQuery){
     if(m_state > 0 || strQuery.length() == 0) return nullptr;
+
+    if(m_FileMap.isEmpty()) SerializationRead();
+
     vector<SearchResultFile>* rgsrfResults = new vector<SearchResultFile>();
 
-    //Create lower query string for case-insensitive search
-    for(unsigned int j = 0; j != strQuery.length(); ++j)
-        strQuery[j] = tolower(strQuery[j]);
+    //Calculate Filter value and length of the current query which are compared with the cached ones to skip many of them
+    DWORD queryFilter = MakeFilter(&strQuery);
 
     unsigned int foundNum = 0;
     for(QMap<DWORDLONG, File>::iterator it = m_FileMap.begin(); it != m_FileMap.end(); ++it){
@@ -193,20 +249,24 @@ vector<SearchResultFile>* Volume::Find(wstring strQuery){
             delete rgsrfResults;
             return nullptr;
         }
-        wstring szLower = it->filename;
-        for(unsigned int j = 0; j != szLower.length(); ++j)
-            szLower[j] = tolower(szLower[j]);
 
-        if(szLower.find(strQuery) != -1){
-            SearchResultFile srf;
-            srf.path.reserve(MAX_PATH);
-            if(GetPath(it->parentIndex, &srf.path)){
-                srf.filename = it->filename;
-                srf.rank = it->rank;
-                rgsrfResults->insert(rgsrfResults->end(), srf);
+        if((it->filter & queryFilter) == queryFilter){
+            QString szLower = it->filename.toLower();
+
+            if(szLower.contains(strQuery)){
+                SearchResultFile srf;
+                srf.path.reserve(MAX_PATH);
+                if(GetPath(it->parentIndex, &srf.path)){
+                    int matchRate = strQuery.length() - szLower.length();
+                    if(matchRate < -20) matchRate = -20;
+
+                    srf.filename = it->filename;
+                    srf.rank = it->rank + matchRate;
+                    rgsrfResults->insert(rgsrfResults->end(), srf);
+                }
+                foundNum++;
+                if(foundNum > 10000) break; // 当搜索数高于该值时停止搜索，以防用时过长。
             }
-            foundNum++;
-            if(foundNum > 10000) break; // 当搜索数高于该值时停止搜索，以防用时过长。
         }
     }
     m_state = 0;
@@ -214,23 +274,55 @@ vector<SearchResultFile>* Volume::Find(wstring strQuery){
 }
 
 // Constructs a path for a directory
-BOOL Volume::GetPath(DWORDLONG index, wstring *sz)
+bool Volume::GetPath(DWORDLONG index, QString *sz)
 {
-    *sz = TEXT("");
+    *sz = "";
     while (index != 0){
-        if(m_FileMap.contains(index) == FALSE) return FALSE;
+        if(m_FileMap.contains(index) == false) return false;
         File file = m_FileMap[index];
-        *sz = file.filename + TEXT("\\") + *sz;
+        *sz = file.filename + "\\" + *sz;
         index = file.parentIndex;
     };
     return TRUE;
 }
 
 // return rank by filename
-char Volume::GetFileRank(wstring *filename)
+short Volume::GetFileRank(QString *filename)
 {
-    char rank = -5;
-    if(filename->find(L".exe", filename->size() - 4) != -1)rank += 10;
-    else if(filename->find(L".lnk", filename->size() - 4) != -1) rank += 15;
+    short rank = 0;
+    if(filename->endsWith(L".exe", Qt::CaseInsensitive))rank += 10;
+    else if(filename->endsWith(L".lnk", Qt::CaseInsensitive)) rank += 15;
     return rank;
+}
+
+// Calculates a 32bit value that is used to filter out many files before comparing their filenames
+DWORD Volume::MakeFilter(QString* str)
+{
+    /*
+    Creates an address that is used to filter out strings that don't contain the queried characters
+    Explanation of the meaning of the single bits:
+    0-25 a-z
+    26 0-9
+    27 . space !#$&'()+,-~_
+    28 not in ASCII
+    */
+    uint len = str->length();
+    if(len <= 0) return 0;
+    DWORD Address = 0;
+    WCHAR c;
+    wstring szlower = str->toLower().toStdWString();
+
+    for(uint i = 0; i != len; ++i)
+    {
+        c = szlower[i];
+        if(c > 96 && c < 123) //a-z
+            Address |= (uint32_t)1 << (DWORD)((DWORD)c - (uint32_t)97);
+        else if(c >= L'0' && c <= '9')
+            Address |= (uint32_t)1 << 26; //0-9
+        else if(c == L'.' || c == L' ' || c == L'!' || c == L'#' || c == L'$' || c == L'&' || c == L'\'' || c == L'(' || c == L')' || c == L'+' || c == L',' || c == L'-' || c == L'~' || c == L'_')
+            Address |= (uint32_t)1 << 27; // . space !#$&'()+,-~_
+        else if(c > 127)
+            Address |= (uint32_t)1 << 28; // not in ASCII
+    }
+    return Address;
 }

@@ -29,7 +29,7 @@ FindWork::FindWork(Volume *volume, QString filename)
 
 void FindWork::run(){
     vector<SearchResultFile>* result;
-    result = m_volume->Find(m_filename.toStdWString());
+    result = m_volume->Find(m_filename);
     emit finished(m_filename, result);
 }
 
@@ -64,7 +64,7 @@ bool FileData::initVolumes()
 void FileData::findFile(QString filename)
 {
     if(state != 2 || m_findingName == filename) return;
-    emit stopFind(); // TODO 检查是否安全
+    emit stopFind();
 
     m_findingName = filename;
     m_findingResult.clear();
@@ -80,14 +80,18 @@ void FileData::findFile(QString filename)
 
 void FileData::updateIndex()
 {
-    for(Volume* volume: m_volumes){
-        volume->UpdateIndex();
-    }
+    for(Volume* volume: m_volumes) volume->UpdateIndex();
+}
+
+void FileData::serializationIndex()
+{
+    for(Volume* volume: m_volumes) volume->SerializationWrite();
 }
 
 void FileData::onInitVolumeWorkFinished(Volume *volume)
 {
     m_volumes.append(volume);
+    volume->SerializationWrite();
     m_waitingInit--;
     if(m_waitingInit == 0) state = 2;
 }

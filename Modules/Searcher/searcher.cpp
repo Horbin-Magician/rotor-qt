@@ -50,13 +50,13 @@ void Searcher::initUI(){
 bool Searcher::event(QEvent *event)
 {
     if (event->type() == QEvent::ActivationChange) {
-        if(QApplication::activeWindow() != this) this->hide();
+        if(QApplication::activeWindow() != this && this->isVisible()) switchShow();
     }
     // if key press
     if (event->type() == QEvent::KeyPress) {
        QKeyEvent *keyEvent = (QKeyEvent*)event;
        // Esc, hide
-       if (keyEvent->key() == Qt::Key_Escape) this->hide();
+       if (keyEvent->key() == Qt::Key_Escape && this->isVisible()) switchShow();
        // Enter, open file
        else if(keyEvent->key() == Qt::Key_Return) m_searchResultList->openCurrent();
        // Up, previous file
@@ -73,7 +73,10 @@ void Searcher::onHotkey(unsigned int fsModifiers, unsigned int  vk)
 }
 
 void Searcher::switchShow(){
-    if(this->isVisible()) this->hide();
+    if(this->isVisible()){
+        this->hide();
+        m_fileData->serializationIndex();
+    }
     else{
         show();
         m_fileData->updateIndex();

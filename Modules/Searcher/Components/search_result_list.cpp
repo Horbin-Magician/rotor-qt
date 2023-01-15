@@ -18,8 +18,8 @@ void SearchResultList::update(const vector<SearchResultFile> &results)
     for(int i =0; i < 20; ++i){
         QListWidgetItem* item = this->item(i);
         if (i < len){
-            QString filename = QString::fromStdWString(results[i].filename);
-            QString path = QString::fromStdWString(results[i].path);
+            QString filename = results[i].filename;
+            QString path = results[i].path;
             QFileInfo fileInfo( path + filename );
             m_fileInfos.append(fileInfo);
             if(item == nullptr){

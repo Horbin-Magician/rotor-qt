@@ -24,16 +24,17 @@ ShotterWindow::ShotterWindow(std::shared_ptr<QPixmap> originPainting, QRectF win
     m_zoom = 1;
     m_direction = NONE;
 
-    m_menu = new QMenu(this);
-    m_menu->addAction(QStringLiteral("复制截图"), this, SLOT(onSaveScreen()));
-    m_menu->addAction(QStringLiteral("保存"), this, SLOT(onSaveScreenOther()));
-    m_menu->addAction(QStringLiteral("最小化"), this, SLOT(minimize()));
-    m_menu->addAction(QStringLiteral("退出截图"), this, SLOT(quitScreenshot()));
-
     setGeometry(m_windowRect.x()/m_scaleRate, m_windowRect.y()/m_scaleRate, m_windowRect.width()/m_scaleRate, m_windowRect.height()/m_scaleRate);
     m_geoRect = geometry();
     setMouseTracking(true); // 开启鼠标实时追踪
     show();
+
+    initToolbar();
+}
+
+ShotterWindow::~ShotterWindow()
+{
+    delete m_toolbar;
 }
 
 void ShotterWindow::stick(STICK_TYPE stick_type, ShotterWindow * shotterWindow)
@@ -120,18 +121,16 @@ DIRECTION ShotterWindow::getMouseRegion(const QPoint &cursor)
 
 bool ShotterWindow::event(QEvent *e)
 {
+    if (e->type() == QEvent::ActivationChange) {
+        if(QApplication::activeWindow() != this && QApplication::activeWindow() != m_toolbar) m_toolbar->hide();
+        else m_toolbar->show();
+    }
     if(e->type() == QEvent::KeyPress){
         QKeyEvent* keyEvent = (QKeyEvent*) e;
         if (keyEvent->key() == Qt::Key_H) minimize(); // S键最小化
         else keyEvent->ignore();
     }
     return QWidget::event(e);
-}
-
-// 在鼠标位置弹射出菜单栏
-void ShotterWindow::contextMenuEvent(QContextMenuEvent *)
-{
-    m_menu->exec(cursor().pos());
 }
 
 void ShotterWindow::mousePressEvent(QMouseEvent *e)
@@ -193,6 +192,7 @@ void ShotterWindow::mouseMoveEvent(QMouseEvent *e)
                 emit sgn_move(this);
             }
         }
+        emit sgn_rect_change(this->geometry());
     }
 }
 
@@ -217,6 +217,7 @@ void ShotterWindow::wheelEvent(QWheelEvent *e)
     if(e->angleDelta().y() > 0) m_zoom = m_zoom + 0.1;
     else if (e->angleDelta().y() < 0 && m_zoom > 0.1) m_zoom = m_zoom - 0.1;
     setGeometry(zoomRect(m_geoRect, m_zoom).toRect());
+    emit sgn_rect_change(this->geometry());
 }
 
 void ShotterWindow::changeEvent(QEvent *event)
@@ -252,20 +253,36 @@ void ShotterWindow::minimize()
     setWindowState(Qt::WindowMinimized);
 }
 
+void ShotterWindow::initToolbar()
+{
+    m_toolbar = new Toolbar(this);
+
+    connect(this, &ShotterWindow::sgn_rect_change, m_toolbar, &Toolbar::movePosition);
+    emit sgn_rect_change(this->geometry());
+
+    connect(m_toolbar, &Toolbar::sgn_complete, this, &ShotterWindow::onCompleteScreen);
+    connect(m_toolbar, &Toolbar::sgn_save, this, &ShotterWindow::onSaveScreen);
+    connect(m_toolbar, &Toolbar::sgn_minimize, this, &ShotterWindow::minimize);
+    connect(m_toolbar, &Toolbar::sgn_close, this, &ShotterWindow::quitScreenshot);
+
+    m_toolbar->show();
+}
+
 QRectF ShotterWindow::zoomRect(const QRectF &rect, float zoom)
 {
     return QRectF(rect.x(), rect.y(), rect.width()*zoom, rect.height()*zoom);
 }
 
 // 保存图片到剪切板
-void ShotterWindow::onSaveScreen()
+void ShotterWindow::onCompleteScreen()
 {
     QClipboard *board = QApplication::clipboard();
     board->setPixmap(m_originPainting.copy(m_windowRect.toRect())); // 把图片放入剪切板
+    quitScreenshot();
 }
 
 // 保存图片到其他地方
-void ShotterWindow::onSaveScreenOther()
+void ShotterWindow::onSaveScreen()
 {
     QString fileName = QFileDialog::getSaveFileName(this, QStringLiteral("保存图片"), getFileName(), "PNG Files (*.PNG)");
     if (fileName.length() > 0) {

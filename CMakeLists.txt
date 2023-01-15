@@ -36,6 +36,7 @@ set(PROJECT_SOURCES
     Modules/ScreenShotter/screen_shotter.h Modules/ScreenShotter/screen_shotter.cpp
     Modules/ScreenShotter/Components/amplifier.h Modules/ScreenShotter/Components/amplifier.cpp
     Modules/ScreenShotter/Components/shotter_window.h Modules/ScreenShotter/Components/shotter_window.cpp
+    Modules/ScreenShotter/Components/toolbar.h Modules/ScreenShotter/Components/toolbar.cpp
 )
 
 # add icon

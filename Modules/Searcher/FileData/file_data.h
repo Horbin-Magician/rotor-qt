@@ -47,6 +47,7 @@ public:
     bool initVolumes();
     void findFile(QString filename);
     void updateIndex();
+    void serializationIndex();
 
     unsigned short state; // 0, created; 1, initing; 2, inited.
 

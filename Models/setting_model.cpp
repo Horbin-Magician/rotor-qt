@@ -4,7 +4,7 @@
 SettingModel::SettingModel(QObject *parent)
 {
     QString appPath = QApplication::applicationDirPath(); // get programe path
-    m_Settings = new QSettings(appPath + "/config.ini", QSettings::IniFormat);
+    m_Settings = new QSettings(appPath + "/userdata/config.ini", QSettings::IniFormat);
     QStringList stringList = m_Settings->allKeys();
     // if no config, init config
     if(stringList.size() == 0){
