@@ -3,6 +3,7 @@
 
 #include <QMap>
 #include <QFile>
+#include <QMutex>
 #include <QApplication>
 #include <string>
 #include <Windows.h>
@@ -52,30 +53,30 @@ struct SearchResult
 
 typedef QMap<DWORDLONG, File> FileMap;
 
-class Volume {
+class Volume{
 public:
     Volume(WCHAR cDrive);
     ~Volume();
     vector<SearchResultFile>* Find(QString strQuery);
     void BuildIndex();
     void UpdateIndex();
+    void ReleaseIndex(bool ifLock = true);
     void StopFind();
-
-    void SerializationWrite();
 private:
     unsigned short m_state;     // 0:free 1:build 2:update 3:Serialization
     HANDLE      m_hVol;			// handle to volume
     WCHAR       m_drive;		// drive letter of volume
     DWORDLONG   m_driveFRN;     // drive FileReferenceNumber
     FileMap     m_FileMap;
+    QMutex      m_FileMapMutex;
     bool        m_StopFind;
     USN         m_StartUSN;
     USN_JOURNAL_DATA m_ujd;
 
     void CleanUp();
-    bool ReleaseIndex();
     void ReduceIndex();
 
+    void SerializationWrite();
     void SerializationRead();
 
     HANDLE Open(WCHAR cDriveLetter, DWORD dwAccess);

@@ -13,6 +13,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Concurrent)
+
 
 set(PROJECT_SOURCES
     Utils/powerboot.h
@@ -67,6 +69,7 @@ endif()
 
 target_link_libraries(Rotor PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 target_link_libraries(Rotor PRIVATE Dwmapi.lib)
+target_link_libraries(Rotor PRIVATE Qt6::Concurrent)
 
 set_target_properties(Rotor PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com

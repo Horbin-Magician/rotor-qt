@@ -14,7 +14,7 @@ void Searcher::initFileData(){
     delete m_fileData;
     m_fileData = new FileData();
     m_fileData->initVolumes();
-    connect(m_fileData, &FileData::updateSearchResult, this, &Searcher::onSearchResultUpdate);
+    connect(m_fileData, &FileData::sgn_updateSearchResult, this, &Searcher::onSearchResultUpdate);
 }
 
 void Searcher::initUI(){
@@ -32,7 +32,7 @@ void Searcher::initUI(){
 
     m_layout = new QVBoxLayout(this);
     m_layout->setContentsMargins(0, 0, 0, 0);
-    m_layout->setSpacing(2);
+    m_layout->setSpacing(5);
 
     m_lineEdit = new QLineEdit(this);
     m_lineEdit->setFixedSize(570, 60);
@@ -50,19 +50,25 @@ void Searcher::initUI(){
 bool Searcher::event(QEvent *event)
 {
     if (event->type() == QEvent::ActivationChange) {
-        if(QApplication::activeWindow() != this && this->isVisible()) switchShow();
+        if(QApplication::activeWindow() != this) switchShow();
     }
     // if key press
     if (event->type() == QEvent::KeyPress) {
-       QKeyEvent *keyEvent = (QKeyEvent*)event;
-       // Esc, hide
-       if (keyEvent->key() == Qt::Key_Escape && this->isVisible()) switchShow();
-       // Enter, open file
-       else if(keyEvent->key() == Qt::Key_Return) m_searchResultList->openCurrent();
-       // Up, previous file
-       else if(keyEvent->key() == Qt::Key_Up) m_searchResultList->up();
-       // Down, next file
-       else if(keyEvent->key() == Qt::Key_Down) m_searchResultList->down();
+        QKeyEvent *keyEvent = (QKeyEvent*)event;
+
+        if (keyEvent->key() == Qt::Key_Escape){ // Esc, hide
+            hide();
+        }
+        else if(keyEvent->key() == Qt::Key_Return){ // Enter, open file
+            m_searchResultList->openCurrent();
+            switchShow();
+        }
+        else if(keyEvent->key() == Qt::Key_Up){ // Up, previous file
+            m_searchResultList->up();
+        }
+        else if(keyEvent->key() == Qt::Key_Down){ // Down, next file
+            m_searchResultList->down();
+        }
     }
     return QWidget::event(event);
 }
@@ -75,7 +81,7 @@ void Searcher::onHotkey(unsigned int fsModifiers, unsigned int  vk)
 void Searcher::switchShow(){
     if(this->isVisible()){
         this->hide();
-        m_fileData->serializationIndex();
+        m_fileData->releaseIndex();
     }
     else{
         show();

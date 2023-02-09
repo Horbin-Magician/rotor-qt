@@ -39,15 +39,15 @@ class FileData:public QObject
 {
     Q_OBJECT
 signals:
-    void updateSearchResult(QString filename, vector<SearchResultFile> filepaths);
-    void stopFind();
+    void sgn_updateSearchResult(QString filename, vector<SearchResultFile> filepaths);
+    void sgn_stopFind();
 public:
     FileData();
     ~FileData();
     bool initVolumes();
     void findFile(QString filename);
     void updateIndex();
-    void serializationIndex();
+    void releaseIndex();
 
     unsigned short state; // 0, created; 1, initing; 2, inited.
 

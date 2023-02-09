@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QThreadPool>
 #include <QApplication>
+#include <QtConcurrent>
 
 #include "file_data.h"
 
@@ -64,7 +65,7 @@ bool FileData::initVolumes()
 void FileData::findFile(QString filename)
 {
     if(state != 2 || m_findingName == filename) return;
-    emit stopFind();
+    emit sgn_stopFind();
 
     m_findingName = filename;
     m_findingResult.clear();
@@ -73,25 +74,32 @@ void FileData::findFile(QString filename)
     for(Volume* volume: m_volumes){
         FindWork* work = new FindWork(volume, m_findingName);
         connect(work, &FindWork::finished, this, &FileData::onFindWorkFinished);
-        connect(this, &FileData::stopFind, work, &FindWork::stop);
+        connect(this, &FileData::sgn_stopFind, work, &FindWork::stop);
         QThreadPool::globalInstance()->start(work);
     }
 }
 
 void FileData::updateIndex()
 {
-    for(Volume* volume: m_volumes) volume->UpdateIndex();
+    for(Volume* volume: m_volumes){
+        QFuture result = QtConcurrent::run([volume]{
+            volume->UpdateIndex();
+        });
+    }
 }
 
-void FileData::serializationIndex()
+void FileData::releaseIndex()
 {
-    for(Volume* volume: m_volumes) volume->SerializationWrite();
+    for(Volume* volume: m_volumes){
+        QFuture result = QtConcurrent::run([volume]{
+            volume->ReleaseIndex();
+        });
+    }
 }
 
 void FileData::onInitVolumeWorkFinished(Volume *volume)
 {
     m_volumes.append(volume);
-    volume->SerializationWrite();
     m_waitingInit--;
     if(m_waitingInit == 0) state = 2;
 }
@@ -102,7 +110,7 @@ void FileData::onFindWorkFinished(QString filename, vector<SearchResultFile>* re
     m_findingResult.insert(m_findingResult.end(), result->begin(), result->end());
     if(--m_waitingFinder == 0){
         sort(m_findingResult.begin(), m_findingResult.end());
-        emit updateSearchResult(filename, m_findingResult);
+        emit sgn_updateSearchResult(filename, m_findingResult);
     }
     delete result;
     result = nullptr;
