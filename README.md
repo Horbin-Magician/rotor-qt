@@ -1,4 +1,4 @@
-<p align="center"><a href="https://github.com/Horbin-Magician/Rotor" target="_blank" rel="noopener noreferrer"><img width="100" src="https://fluctus.cc/static/build/favicon.ico" alt="Rotor logo"></a></p>
+<p align="center"><a href="https://github.com/Horbin-Magician/Rotor" target="_blank" rel="noopener noreferrer"><img width="100" src="https://fluctus.cc/static/dist/logo.png" alt="Rotor logo"></a></p>
 
 # Introduce
 
