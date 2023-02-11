@@ -28,21 +28,12 @@ Volume::~Volume()
     CleanUp();
 }
 
-
-
 // Clears the database
 void Volume::ReleaseIndex(bool ifLock)
 {
-    qDebug()<<(char)m_drive<<": wait ReleaseIndex";
-    if(ifLock){
-        m_FileMapMutex.lock();
-    }
-    qDebug()<<(char)m_drive<<": begin ReleaseIndex";
+    if(ifLock) m_FileMapMutex.lock();
     m_FileMap.clear();
-    if(ifLock){
-        m_FileMapMutex.unlock();
-    }
-    qDebug()<<(char)m_drive<<": end ReleaseIndex";
+    if(ifLock) m_FileMapMutex.unlock();
 }
 
 // Cleanup function to free resources
@@ -71,9 +62,7 @@ bool Volume::Query(PUSN_JOURNAL_DATA pUsnJournalData){
 
 // Enumerate the MFT for all entries. Store the file reference numbers of any directories in the database.
 void Volume::BuildIndex(){
-    qDebug()<<(char)m_drive<<": wait BuildIndex";
     m_FileMapMutex.lock();
-    qDebug()<<(char)m_drive<<": begin BuildIndex";
 
     ReleaseIndex(false);
 
@@ -106,15 +95,13 @@ void Volume::BuildIndex(){
     }
     ReduceIndex();
     SerializationWrite();
-
     m_FileMapMutex.unlock();
-    qDebug()<<(char)m_drive<<": end BuildIndex";
 }
 
 // Delete ignored and useless index
 void Volume::ReduceIndex(){
     SettingModel& settingModel = SettingModel::getInstance();
-    QStringList ignoredPathList = settingModel.getIgnoredPath();
+    QStringList ignoredPathList = settingModel.getConfig(settingModel.Flag_IgnoredPath).toStringList();
 
     for(FileMap::iterator it = m_FileMap.begin();it != m_FileMap.end();){
         QString path;
@@ -139,7 +126,7 @@ void Volume::ReduceIndex(){
     for(FileMap::iterator it = m_FileMap.begin();it != m_FileMap.end();){
         // del file with ignored path or useless
         QString path;
-        if(GetPath(it->parentIndex, &path) == FALSE){
+        if(GetPath(it->parentIndex, &path) == false){
             it = m_FileMap.erase(it);
             continue;
         }
@@ -160,9 +147,7 @@ void Volume::UpdateIndex(){
 
     qDebug()<<m_StartUSN;
 
-    qDebug()<<(char)m_drive<<": wait UpdateIndex";
     m_FileMapMutex.lock();
-    qDebug()<<(char)m_drive<<": begin UpdateIndex";
     while (DeviceIoControl(m_hVol, FSCTL_READ_USN_JOURNAL, &rujd, sizeof(rujd), pData, sizeof(pData), &cb, NULL)){
         if(cb == 8) break;
         PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
@@ -183,7 +168,6 @@ void Volume::UpdateIndex(){
         rujd.StartUsn = *(USN *)&pData;
     }
     m_FileMapMutex.unlock();
-    qDebug()<<(char)m_drive<<": end UpdateIndex";
 
     m_StartUSN = rujd.StartUsn;
 }
@@ -229,16 +213,13 @@ void Volume::SerializationRead()
 
     in>>m_StartUSN;
 
-    qDebug()<<(char)m_drive<<": wait SerializationRead";
     m_FileMapMutex.lock();
-    qDebug()<<(char)m_drive<<": begin SerializationRead";
     while(in.atEnd() == false){
         in>>index>>parentIndex>>filename>>filter>>rank;
         File insertFile(parentIndex, filename, filter, rank);
         m_FileMap[index] = insertFile;
     }
     m_FileMapMutex.unlock();
-    qDebug()<<(char)m_drive<<": end SerializationRead";
 
     file.close();
 }
@@ -274,7 +255,7 @@ vector<SearchResultFile>* Volume::Find(QString strQuery){
         if((it->filter & queryFilter) == queryFilter){
             QString szLower = it->filename.toLower();
 
-            if(szLower.contains(strQuery)){
+            if(szLower.contains(strQuery, Qt::CaseInsensitive)){
                 SearchResultFile srf;
                 srf.path.reserve(MAX_PATH);
                 if(GetPath(it->parentIndex, &srf.path)){

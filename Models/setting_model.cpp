@@ -3,6 +3,8 @@
 
 SettingModel::SettingModel(QObject *parent)
 {
+    this->version = "1.3.1";
+
     QString appPath = QApplication::applicationDirPath(); // get programe path
     m_Settings = new QSettings(appPath + "/userdata/config.ini", QSettings::IniFormat);
     QStringList stringList = m_Settings->allKeys();
@@ -23,15 +25,18 @@ SettingModel &SettingModel::getInstance()
     return m_pInstance;
 }
 
-bool SettingModel::getIfPowerBoot()
+bool SettingModel::setConfig(QString flag, QVariant value)
 {
-    return m_Settings->value("IfPowerBoot").toBool();
+    m_Settings->setValue(flag, value);
+    if(flag == Flag_IfPowerBoot) PowerBoot::setProcessAutoRun(value.toBool());
+
+    return true;
 }
 
-void SettingModel::setIfPowerBoot(bool value)
+QVariant SettingModel::getConfig(QString flag)
 {
-    PowerBoot::setProcessAutoRun(value);
-    m_Settings->setValue("IfPowerBoot", QVariant(value));
+    if(flag == Flag_Version) return QVariant(this->version);
+    return m_Settings->value(flag);
 }
 
 QStringList SettingModel::getIgnoredPath()
@@ -48,6 +53,6 @@ void SettingModel::setIgnoredPath(QString value)
 // init config when no config exit
 void SettingModel::initConfig()
 {
-    setIfPowerBoot(false);
-    m_Settings->setValue("IgnoredPath", QVariant(QStringList("C:\\Windows")));
+    setConfig(Flag_IfPowerBoot, QVariant(false));
+    m_Settings->setValue(Flag_IgnoredPath, QVariant(QStringList("c:\\Windows")));
 }

@@ -25,6 +25,7 @@ private:
     QHBoxLayout* m_MainLayout;
     QListWidget* m_LeftWidget;
     QStackedWidget* m_RightWidget;
+    QString m_version;
 
     void initUI();
     void initSettingWidgets();

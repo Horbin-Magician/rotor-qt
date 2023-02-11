@@ -127,7 +127,12 @@ bool ShotterWindow::event(QEvent *e)
     }
     if(e->type() == QEvent::KeyPress){
         QKeyEvent* keyEvent = (QKeyEvent*) e;
-        if (keyEvent->key() == Qt::Key_H) minimize(); // S键最小化
+        qDebug()<<(int)keyEvent->modifiers();
+        qDebug()<<(int)Qt::Key_Control;
+        if (keyEvent->key() == Qt::Key_H) minimize(); // H键最小化
+        else if (keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return) onCompleteScreen();
+        else if (keyEvent->key() == Qt::Key_Escape) quitScreenshot();
+        else if ((keyEvent->modifiers() & Qt::ControlModifier) && keyEvent->key() == Qt::Key_S) onSaveScreen();
         else keyEvent->ignore();
     }
     return QWidget::event(e);

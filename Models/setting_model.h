@@ -10,10 +10,14 @@ class SettingModel
 public:
     static SettingModel& getInstance();
 
-    bool getIfPowerBoot();
-    void setIfPowerBoot(bool value);
+    bool setConfig(QString flag, QVariant value);
+    QVariant getConfig(QString flag);
+
+    QString Flag_IfPowerBoot = "IfPowerBoot";
+    QString Flag_IgnoredPath = "IgnoredPath";
+    QString Flag_Version = "Version";
     QStringList getIgnoredPath();
-    void setIgnoredPath(QString value);
+    void setIgnoredPath(QString);
 private:
     explicit SettingModel(QObject * parent = nullptr);
     ~SettingModel();
@@ -21,6 +25,8 @@ private:
     void initConfig();
 
     QSettings* m_Settings;
+
+    QString version;
 };
 
 #endif // SETTINGMODEL_H

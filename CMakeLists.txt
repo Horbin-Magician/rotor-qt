@@ -13,6 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Network)
 find_package(Qt6 REQUIRED COMPONENTS Concurrent)
 
 
@@ -20,6 +21,7 @@ set(PROJECT_SOURCES
     Utils/powerboot.h
     Utils/UAC.h
     Utils/hotkey.h
+    Utils/commonUtils.h
 
     Models/setting_model.h Models/setting_model.cpp
     GUI/w_setting.h GUI/w_setting.cpp
@@ -68,6 +70,7 @@ else()
 endif()
 
 target_link_libraries(Rotor PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(Rotor PRIVATE Qt${QT_VERSION_MAJOR}::Network)
 target_link_libraries(Rotor PRIVATE Dwmapi.lib)
 target_link_libraries(Rotor PRIVATE Qt6::Concurrent)
 

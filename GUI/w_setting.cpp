@@ -1,5 +1,6 @@
 #include "w_setting.h"
 #include "Models/setting_model.h"
+#include "Utils/commonUtils.h"
 
 Setting::Setting(QWidget *parent) : QWidget{parent}
 {
@@ -17,16 +18,16 @@ bool Setting::SwitchContent(const short index)
 void Setting::initUI()
 {
     this->setWindowTitle("设置");
-    this->setMinimumWidth(800);
-    this->setMinimumHeight(500);
+    this->setMinimumWidth(400);
+    this->setMinimumHeight(200);
 
     // init left part
     m_LeftWidget = new QListWidget();
-    m_LeftWidget->setFixedWidth(100);
+    m_LeftWidget->setFixedWidth(70);
     connect(m_LeftWidget, &QListWidget::currentRowChanged, this, &Setting::SwitchContent);
     // init right part
     m_RightWidget = new QStackedWidget();
-    m_SettingNames = QList<QString>() << "常规" << "搜索";
+    m_SettingNames = QList<QString>() << "常规" << "搜索"<< "关于";
     // add widgets to right widget by setting names
     for(int i = 0; i < m_SettingNames.size(); i++){
         m_LeftWidget->addItem(m_SettingNames[i]);
@@ -51,15 +52,17 @@ void Setting::initUI()
 void Setting::initSettingWidgets()
 {
     SettingModel& settingModel = SettingModel::getInstance();
+    m_version = settingModel.getConfig(settingModel.Flag_Version).toString();
+
     for(int i = 0; i < m_SettingNames.size(); i++)
     {
         QWidget* widget = m_RightWidget->widget(i);
         if(m_SettingNames[i] == "常规"){
             QCheckBox* ifPowerBootCheckBox = new QCheckBox();
             ifPowerBootCheckBox->setText("开机启动");
-            ifPowerBootCheckBox->setChecked(settingModel.getIfPowerBoot());
+            ifPowerBootCheckBox->setChecked( settingModel.getConfig(settingModel.Flag_IfPowerBoot).toBool() );
             connect(ifPowerBootCheckBox, &QCheckBox::stateChanged, [&settingModel](int state){
-                settingModel.setIfPowerBoot(state);
+                settingModel.setConfig(settingModel.Flag_IfPowerBoot, QVariant(state));
             });
             widget->layout()->addWidget(ifPowerBootCheckBox);
         }
@@ -77,6 +80,16 @@ void Setting::initSettingWidgets()
             });
             filterLayout->addWidget(lineEdit);
             widget->layout()->addWidget(filterWidget);
+        }
+        else if(m_SettingNames[i] == "关于"){
+            QLabel* aboutLabel = new QLabel("Rotor 版本：" + m_version);
+            QPushButton* pushButton = new QPushButton("检查更新");
+            connect(pushButton, &QPushButton::clicked, [&](){
+                Updater* updater = new Updater();
+                updater->InspectUpdate(m_version);
+            });
+            widget->layout()->addWidget(aboutLabel);
+            widget->layout()->addWidget(pushButton);
         }
         ( (QBoxLayout*)( widget->layout() ) )->addStretch();
     }
