@@ -188,7 +188,7 @@ void ScreenShotter::endShot()
     this->hide();
     m_state = 0;
     foreach (ShotterWindow* win, m_ShotterWindowList) win->show();
-    m_ShotterWindowList.last()->raise();
+    if(m_ShotterWindowList.length()>0) m_ShotterWindowList.last()->raise();
     m_isHidden = false;
 }
 

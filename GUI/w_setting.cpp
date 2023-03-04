@@ -2,6 +2,7 @@
 #include "Models/setting_model.h"
 #include "Utils/commonUtils.h"
 
+
 Setting::Setting(QWidget *parent) : QWidget{parent}
 {
     this->initUI();
@@ -18,8 +19,8 @@ bool Setting::SwitchContent(const short index)
 void Setting::initUI()
 {
     this->setWindowTitle("设置");
-    this->setMinimumWidth(400);
-    this->setMinimumHeight(200);
+    this->setFixedWidth(500);
+    this->setFixedHeight(300);
 
     // init left part
     m_LeftWidget = new QListWidget();

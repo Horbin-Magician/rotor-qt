@@ -58,8 +58,9 @@ void SearchResultList::down()
 // open selected item
 void SearchResultList::openCurrent()
 {
-    if(this->currentRow() < 0) return;
-    QFileInfo fileInfo = m_fileInfos[this->currentRow()];
+    int currentRow = this->currentRow();
+    if(currentRow < 0 || m_fileInfos.length() - 1 < currentRow ) return;
+    QFileInfo fileInfo = m_fileInfos[currentRow];
     if( !QDesktopServices::openUrl(QUrl::fromLocalFile(fileInfo.filePath())) ){
         Rotor::getInstance().showMessage("提示","无法打开该类型文件！", QSystemTrayIcon::MessageIcon::Information,2000);
     }
