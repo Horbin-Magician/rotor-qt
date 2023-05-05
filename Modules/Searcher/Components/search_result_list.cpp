@@ -61,18 +61,20 @@ void SearchResultList::openCurrent()
     int currentRow = this->currentRow();
     if(currentRow < 0 || m_fileInfos.length() - 1 < currentRow ) return;
     QFileInfo fileInfo = m_fileInfos[currentRow];
-    if( !QDesktopServices::openUrl(QUrl::fromLocalFile(fileInfo.filePath())) ){
-        Rotor::getInstance().showMessage("提示","无法打开该类型文件！", QSystemTrayIcon::MessageIcon::Information,2000);
-    }
+
+    m_process.startDetached("explorer.exe", QStringList(fileInfo.filePath().replace("/", "\\")));
 }
 
 // open selected item's path
 void SearchResultList::openCurrentPath()
 {
     QFileInfo fileInfo = m_fileInfos[this->currentRow()];
-    if( !QDesktopServices::openUrl(QUrl::fromLocalFile(fileInfo.absolutePath())) ){
-        Rotor::getInstance().showMessage("提示","无法打开该文件夹！", QSystemTrayIcon::MessageIcon::Information,2000);
-    }
+    m_process.startDetached("explorer.exe", QStringList(fileInfo.absolutePath().replace("/", "\\")));
+}
+
+void SearchResultList::release()
+{
+    m_fileInfos.clear();
 }
 
 void SearchResultList::initUI()

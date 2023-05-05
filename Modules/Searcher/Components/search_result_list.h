@@ -7,12 +7,11 @@
 #include <QPixmap>
 #include <QFileIconProvider>
 #include <QListWidgetItem>
-#include <QDesktopServices>
 #include <QMessageBox>
-#include <QUrl>
 #include <QKeyEvent>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QProcess>
 
 #include "../FileData/volume.h"
 
@@ -41,10 +40,13 @@ public:
     void down();
     void openCurrent();
     void openCurrentPath();
+
+    void release();
 private:
     void initUI();
     QMenu* m_ContextMenu;
     QList<QFileInfo> m_fileInfos;
+    QProcess m_process;
 };
 
 #endif // SEARCHRESULTLIST_H

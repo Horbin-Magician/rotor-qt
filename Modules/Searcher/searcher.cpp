@@ -82,6 +82,7 @@ void Searcher::switchShow(){
     if(this->isVisible()){
         this->hide();
         m_fileData->releaseIndex();
+        m_searchResultList->release();
     }
     else{
         show();
