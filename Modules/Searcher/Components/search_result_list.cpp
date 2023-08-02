@@ -65,6 +65,19 @@ void SearchResultList::openCurrent()
     m_process.startDetached("explorer.exe", QStringList(fileInfo.filePath().replace("/", "\\")));
 }
 
+// open selected item as Admin
+void SearchResultList::openCurrentAdmin()
+{
+    int currentRow = this->currentRow();
+    if(currentRow < 0 || m_fileInfos.length() - 1 < currentRow ) return;
+    QFileInfo fileInfo = m_fileInfos[currentRow];
+
+    if( !QDesktopServices::openUrl(QUrl::fromLocalFile(fileInfo.filePath())) ){
+        Rotor::getInstance().showMessage("提示","无法打开该类型文件！", QSystemTrayIcon::MessageIcon::Information,2000);
+    }
+}
+
+
 // open selected item's path
 void SearchResultList::openCurrentPath()
 {
@@ -86,8 +99,11 @@ void SearchResultList::initUI()
                         "QListWidget::item:selected{background: rgb(255,255,255);}"
                         "QListWidget::item:hover{background: rgb(200,200,200);}");
     m_ContextMenu = new QMenu(this);
+    QAction* openAsAdmin = new QAction("以管理员身份打开", this);
     QAction* openPath = new QAction("打开文件所在目录", this);
+    m_ContextMenu->addAction(openAsAdmin);
     m_ContextMenu->addAction(openPath);
+    connect(openAsAdmin, &QAction::triggered, this, &SearchResultList::openCurrentAdmin);
     connect(openPath, &QAction::triggered, this, &SearchResultList::openCurrentPath);
     connect(this, &SearchResultList::customContextMenuRequested,this, [&](){m_ContextMenu->exec(QCursor::pos());});
 }

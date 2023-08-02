@@ -7,6 +7,7 @@
 #include <QPixmap>
 #include <QFileIconProvider>
 #include <QListWidgetItem>
+#include <QDesktopServices>
 #include <QMessageBox>
 #include <QKeyEvent>
 #include <QHBoxLayout>
@@ -39,6 +40,7 @@ public:
     void up();
     void down();
     void openCurrent();
+    void openCurrentAdmin();
     void openCurrentPath();
 
     void release();

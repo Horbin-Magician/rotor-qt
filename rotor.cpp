@@ -56,7 +56,7 @@ void Rotor::activeTray(QSystemTrayIcon::ActivationReason reason)
     switch (reason)
     {
         case QSystemTrayIcon::Context: m_menu->show();break; // right click show menu
-        case QSystemTrayIcon::Trigger: m_searcher->switchShow();break; // click show searcher
+        case QSystemTrayIcon::Trigger: m_setting->show();break; // click show searcher
         default: break;
     }
 }
