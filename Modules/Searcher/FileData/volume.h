@@ -14,16 +14,25 @@ using namespace std;
 struct File
 {
     DWORDLONG parentIndex;
-    QString filename;
+    std::shared_ptr<char> fileName;
     DWORD filter;
-    short rank;
+    char rank;
 
-    File(const DWORDLONG aParentIndex=0, const QString aFilename="", const DWORD aFilter=0, const short aRank=0)
+    File(const DWORDLONG aParentIndex=0, const QString aFileName="", const DWORD aFilter=0, const char aRank=0)
     {
         parentIndex = aParentIndex;
         filter = aFilter;
         rank = aRank;
-        filename = aFilename;
+
+        QByteArray fileNameU8 = aFileName.toUtf8();
+        char* tmp_char_ptr = new char[fileNameU8.size() + 1];
+        strncpy(tmp_char_ptr, fileNameU8.data(), fileNameU8.size() + 1);
+        fileName.reset(tmp_char_ptr);
+    }
+
+    QString getStrName() const
+    {
+        return QString::fromUtf8(QByteArray(fileName.get()));
     }
 };
 
@@ -63,7 +72,7 @@ public:
     void ReleaseIndex(bool ifLock = true);
     void StopFind();
 private:
-    unsigned short m_state;     // 0:free 1:build 2:update 3:Serialization
+    unsigned char m_state;     // 0:free 1:build 2:update 3:Serialization
     HANDLE      m_hVol;			// handle to volume
     WCHAR       m_drive;		// drive letter of volume
     DWORDLONG   m_driveFRN;     // drive FileReferenceNumber
@@ -83,10 +92,12 @@ private:
     bool Query(PUSN_JOURNAL_DATA pUsnJournalData);
 
     DWORD MakeFilter(QString* str);
-    bool AddFile(DWORDLONG Index, QString filename, DWORDLONG ParentIndex);
+    char* SimplifyString(QString* str);
+
+    bool AddFile(DWORDLONG Index, wstring fileName, DWORDLONG ParentIndex);
     bool GetPath(DWORDLONG Index, QString *sz);
 
-    short GetFileRank(QString *filename);
+    char GetFileRank(QString *filename);
 };
 
 #endif // VOLUME_H

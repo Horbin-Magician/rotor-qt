@@ -5,6 +5,7 @@
 #include <fstream>
 #include <QDebug>
 #include <QElapsedTimer>
+#include <QThread>
 
 #include "Models/setting_model.h"
 
@@ -72,8 +73,7 @@ void Volume::BuildIndex(){
     // add the root directory
     WCHAR szRoot[_MAX_PATH];
     wsprintf(szRoot, TEXT("%c:"), m_drive);
-    QString rootName = QString::fromWCharArray(szRoot);
-    AddFile(m_driveFRN, rootName, 0);
+    AddFile(m_driveFRN, szRoot, 0);
 
     MFT_ENUM_DATA med;
     med.StartFileReferenceNumber = 0;
@@ -87,8 +87,7 @@ void Volume::BuildIndex(){
         PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
         while ((PBYTE) pRecord < (pData + cb)){
             wstring sz((LPCWSTR) ((PBYTE) pRecord + pRecord->FileNameOffset), pRecord->FileNameLength / sizeof(WCHAR));
-            QString fileName = QString::fromStdWString(sz);
-            AddFile(pRecord->FileReferenceNumber, fileName, pRecord->ParentFileReferenceNumber);
+            AddFile(pRecord->FileReferenceNumber, sz, pRecord->ParentFileReferenceNumber);
             pRecord = (PUSN_RECORD) ((PBYTE) pRecord + pRecord->RecordLength);
         }
         med.StartFileReferenceNumber = * (USN *) pData;
@@ -103,9 +102,9 @@ void Volume::ReduceIndex(){
     SettingModel& settingModel = SettingModel::getInstance();
     QStringList ignoredPathList = settingModel.getConfig(settingModel.Flag_IgnoredPath).toStringList();
 
-    for(FileMap::iterator it = m_FileMap.begin();it != m_FileMap.end();){
+    for(FileMap::const_iterator it = m_FileMap.cbegin();it != m_FileMap.cend();){
         QString path;
-        QString filename = it->filename;
+        QString filename = it->getStrName();
         // del ignored path
         bool ifFound = false;
         for(int i=0; i < ignoredPathList.length(); i++){
@@ -119,18 +118,18 @@ void Volume::ReduceIndex(){
                 }
             }
         }
-        if(ifFound)it = m_FileMap.erase(it);
+        if(ifFound) it = (FileMap::const_iterator)m_FileMap.erase(it);
         else ++it;
     }
 
-    for(FileMap::iterator it = m_FileMap.begin();it != m_FileMap.end();){
+    for(FileMap::const_iterator it = m_FileMap.cbegin();it != m_FileMap.cend();){
         // del file with ignored path or useless
         QString path;
         if(GetPath(it->parentIndex, &path) == false){
-            it = m_FileMap.erase(it);
+            it = (FileMap::const_iterator)m_FileMap.erase(it);
             continue;
         }
-        it++;
+        ++it;
     }
 }
 
@@ -153,15 +152,14 @@ void Volume::UpdateIndex(){
         PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
         while ((PBYTE) pRecord < (pData + cb)){
             wstring sz((LPCWSTR) ((PBYTE) pRecord + pRecord->FileNameOffset), pRecord->FileNameLength / sizeof(WCHAR));
-            QString fileName = QString::fromStdWString(sz);
             if ((pRecord->Reason & USN_REASON_FILE_CREATE) == USN_REASON_FILE_CREATE){
-                AddFile(pRecord->FileReferenceNumber, fileName, pRecord->ParentFileReferenceNumber);
+                AddFile(pRecord->FileReferenceNumber, sz, pRecord->ParentFileReferenceNumber);
             }
             else if ((pRecord->Reason & USN_REASON_FILE_DELETE) == USN_REASON_FILE_DELETE){
                 m_FileMap.remove(pRecord->FileReferenceNumber);
             }
             else if ((pRecord->Reason & USN_REASON_RENAME_NEW_NAME) == USN_REASON_RENAME_NEW_NAME){
-                AddFile(pRecord->FileReferenceNumber, fileName, pRecord->ParentFileReferenceNumber);
+                AddFile(pRecord->FileReferenceNumber, sz, pRecord->ParentFileReferenceNumber);
             }
             pRecord = (PUSN_RECORD) ((PBYTE) pRecord + pRecord->RecordLength);
         }
@@ -191,7 +189,7 @@ void Volume::SerializationWrite()
     while (i.hasNext()){
         i.next();
         File filedata = i.value();
-        out<<i.key()<<filedata.parentIndex<<filedata.filename<<(quint32)filedata.filter<<filedata.rank;
+        out<<i.key()<<filedata.parentIndex<<filedata.fileName.get()<<(quint32)filedata.filter<<filedata.rank;
     }
 
     this->ReleaseIndex(false);
@@ -207,28 +205,28 @@ void Volume::SerializationRead()
 
     DWORDLONG index;
     DWORDLONG parentIndex;
-    QString filename;
+    QByteArray fileName;
     quint32 filter;
-    short rank;
+    char rank;
 
     in>>m_StartUSN;
 
     m_FileMapMutex.lock();
     while(in.atEnd() == false){
-        in>>index>>parentIndex>>filename>>filter>>rank;
-        File insertFile(parentIndex, filename, filter, rank);
+        in>>index>>parentIndex>>fileName>>filter>>rank;
+        File insertFile(parentIndex, fileName, filter, rank);
         m_FileMap[index] = insertFile;
     }
     m_FileMapMutex.unlock();
-
     file.close();
 }
 
 // Adds a file to the database
-bool Volume::AddFile(DWORDLONG index, QString filename, DWORDLONG parentIndex){
-    DWORD filter = MakeFilter(&filename);
-    short rank = GetFileRank(&filename);
-    File insertFile(parentIndex, filename, filter, rank);
+bool Volume::AddFile(DWORDLONG index, wstring fileName, DWORDLONG parentIndex){
+    QString qFileName = QString::fromStdWString(fileName);
+    DWORD filter = MakeFilter(&qFileName);
+    char rank = GetFileRank(&qFileName);
+    File insertFile(parentIndex, qFileName, filter, rank);
     m_FileMap[index] = insertFile;
     return(TRUE);
 }
@@ -253,17 +251,15 @@ vector<SearchResultFile>* Volume::Find(QString strQuery){
         }
 
         if((it->filter & queryFilter) == queryFilter){
-            QString szLower = it->filename.toLower();
+            QString sz = it->getStrName();
+            QString szLower = sz.toLower();
 
             if(szLower.contains(strQuery, Qt::CaseInsensitive)){
                 SearchResultFile srf;
                 srf.path.reserve(MAX_PATH);
                 if(GetPath(it->parentIndex, &srf.path)){
-                    int matchRate = strQuery.length() - szLower.length();
-                    if(matchRate < -20) matchRate = -20;
-
-                    srf.filename = it->filename;
-                    srf.rank = it->rank + matchRate;
+                    srf.filename = sz;
+                    srf.rank = it->rank - (szLower.length() - strQuery.length());
                     rgsrfResults->insert(rgsrfResults->end(), srf);
                 }
                 foundNum++;
@@ -282,18 +278,18 @@ bool Volume::GetPath(DWORDLONG index, QString *sz)
     while (index != 0){
         if(m_FileMap.contains(index) == false) return false;
         File file = m_FileMap[index];
-        *sz = file.filename + "\\" + *sz;
+        *sz = file.getStrName() + "\\" + *sz;
         index = file.parentIndex;
     };
     return TRUE;
 }
 
 // return rank by filename
-short Volume::GetFileRank(QString *filename)
+char Volume::GetFileRank(QString *fileName)
 {
-    short rank = 0;
-    if(filename->endsWith(L".exe", Qt::CaseInsensitive))rank += 10;
-    else if(filename->endsWith(L".lnk", Qt::CaseInsensitive)) rank += 30;
+    char rank = 0;
+    if(fileName->endsWith(L".exe", Qt::CaseInsensitive))rank += 10;
+    else if(fileName->endsWith(L".lnk", Qt::CaseInsensitive)) rank += 30;
     return rank;
 }
 
@@ -310,21 +306,23 @@ DWORD Volume::MakeFilter(QString* str)
     */
     uint len = str->length();
     if(len <= 0) return 0;
-    DWORD Address = 0;
-    WCHAR c;
-    wstring szlower = str->toLower().toStdWString();
+    uint32_t Address = 0;
+
+    QString szlower = str->toLower();
+    char c;
 
     for(uint i = 0; i != len; ++i)
     {
-        c = szlower[i];
-        if(c > 96 && c < 123) //a-z
-            Address |= (uint32_t)1 << (DWORD)((DWORD)c - (uint32_t)97);
+        c = szlower[i].toLatin1();
+        if(c > 96 && c < 123)             //a-z
+            Address |= (uint32_t)1 << ((uint32_t)c - (uint32_t)97);
         else if(c >= L'0' && c <= '9')
             Address |= (uint32_t)1 << 26; //0-9
         else if(c == L'.' || c == L' ' || c == L'!' || c == L'#' || c == L'$' || c == L'&' || c == L'\'' || c == L'(' || c == L')' || c == L'+' || c == L',' || c == L'-' || c == L'~' || c == L'_')
             Address |= (uint32_t)1 << 27; // . space !#$&'()+,-~_
-        else if(c > 127)
+        else if(c == 0){
             Address |= (uint32_t)1 << 28; // not in ASCII
+        }
     }
     return Address;
 }
