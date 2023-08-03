@@ -9,6 +9,8 @@
 #include <QPainter>
 #include <windows.h>
 
+#include "Models/setting_model.h"
+
 
 ShotterWindow::ShotterWindow(std::shared_ptr<QPixmap> originPainting, QRectF windowRect, QWidget *parent):QWidget(parent)
 {
@@ -289,10 +291,19 @@ void ShotterWindow::onCompleteScreen()
 // 保存图片到其他地方
 void ShotterWindow::onSaveScreen()
 {
-    QString fileName = QFileDialog::getSaveFileName(this, QStringLiteral("保存图片"), getFileName(), "PNG Files (*.PNG)");
+    SettingModel& settingModel = SettingModel::getInstance();
+    QVariant savePath = settingModel.getConfig(settingModel.Flag_Save_Path);
+
+    QString fileName = QFileDialog::getSaveFileName(this, QStringLiteral("保存图片"), savePath.toString() + getFileName(), "PNG Files (*.PNG)");
     if (fileName.length() > 0) {
         QPixmap pic = m_originPainting.copy(m_windowRect.toRect());
         pic.save(fileName, "png");
+
+        QStringList listTmp = fileName.split("/");
+        listTmp.pop_back();
+        QString savePath = listTmp.join('/') + '/';
+
+        settingModel.setConfig(settingModel.Flag_Save_Path, QVariant(savePath));
     }
 }
 

@@ -7,8 +7,6 @@
 #include <QElapsedTimer>
 #include <QThread>
 
-#include "Models/setting_model.h"
-
 // Constructor
 Volume::Volume(WCHAR drive)
 {
@@ -63,8 +61,9 @@ bool Volume::Query(PUSN_JOURNAL_DATA pUsnJournalData){
 
 // Enumerate the MFT for all entries. Store the file reference numbers of any directories in the database.
 void Volume::BuildIndex(){
-    QElapsedTimer timer; //定义对象
-    timer.start();  //开始计时
+    // init timer
+    QElapsedTimer timer;
+    timer.start();
 
     m_FileMapMutex.lock();
 
@@ -99,7 +98,7 @@ void Volume::BuildIndex(){
     SerializationWrite();
     m_FileMapMutex.unlock();
 
-    qDebug() << m_drive  << "[计时信息] BuildIndex用时：" << timer.elapsed() << "milliseconds";
+    qDebug() << (char)m_drive  << "[计时信息] BuildIndex用时：" << timer.elapsed() << "milliseconds";
 }
 
 void Volume::UpdateIndex(){
@@ -215,6 +214,10 @@ char Volume::MatchStr(const QString &contain, const QString &query_lower)
 
 // searching
 vector<SearchResultFile>* Volume::Find(QString strQuery){
+    // init timer
+    QElapsedTimer timer;
+    timer.start();
+
     if(strQuery.length() == 0) return nullptr;
     if(m_FileMap.isEmpty()) SerializationRead();
 
@@ -248,6 +251,9 @@ vector<SearchResultFile>* Volume::Find(QString strQuery){
         }
     }
     m_FileMapMutex.unlock();
+
+    qDebug() << (char)m_drive  << "[计时信息] Find用时：" << timer.elapsed() << "milliseconds";
+
     return rgsrfResults;
 }
 
