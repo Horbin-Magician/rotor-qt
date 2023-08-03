@@ -68,19 +68,7 @@ void Setting::initSettingWidgets()
             widget->layout()->addWidget(ifPowerBootCheckBox);
         }
         else if(m_SettingNames[i] == "搜索"){
-            QWidget* filterWidget = new QWidget();
-            QHBoxLayout* filterLayout = new QHBoxLayout();
-            filterWidget->setLayout(filterLayout);
-            QLabel* filterLabel = new QLabel();
-            filterLabel->setText("忽略目录：");
-            filterLayout->addWidget(filterLabel);
-            QLineEdit* lineEdit = new QLineEdit();
-            lineEdit->setText(settingModel.getIgnoredPath().join(';'));
-            connect(lineEdit, &QLineEdit::textChanged, [&](const QString &text){
-                settingModel.setIgnoredPath(text);
-            });
-            filterLayout->addWidget(lineEdit);
-            widget->layout()->addWidget(filterWidget);
+
         }
         else if(m_SettingNames[i] == "关于"){
             QLabel* aboutLabel = new QLabel("Rotor 版本：" + m_version);

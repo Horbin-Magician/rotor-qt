@@ -39,17 +39,6 @@ QVariant SettingModel::getConfig(QString flag)
     return m_Settings->value(flag);
 }
 
-QStringList SettingModel::getIgnoredPath()
-{
-    return m_Settings->value("IgnoredPath").toStringList();
-}
-
-void SettingModel::setIgnoredPath(QString value)
-{
-    QStringList list = value.split(';');
-    m_Settings->setValue("IgnoredPath", QVariant(list));
-}
-
 // init config when no config exit
 void SettingModel::initConfig()
 {

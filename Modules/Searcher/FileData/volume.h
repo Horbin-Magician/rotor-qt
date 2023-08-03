@@ -83,7 +83,6 @@ private:
     USN_JOURNAL_DATA m_ujd;
 
     void CleanUp();
-    void ReduceIndex();
 
     void SerializationWrite();
     void SerializationRead();
@@ -95,8 +94,9 @@ private:
     char* SimplifyString(QString* str);
 
     bool AddFile(DWORDLONG Index, wstring fileName, DWORDLONG ParentIndex);
-    bool GetPath(DWORDLONG Index, QString *sz);
+    char MatchStr(const QString &contain, const QString &query);
 
+    bool GetPath(DWORDLONG Index, QString *sz);
     char GetFileRank(QString *filename);
 };
 

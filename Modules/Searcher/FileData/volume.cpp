@@ -63,6 +63,9 @@ bool Volume::Query(PUSN_JOURNAL_DATA pUsnJournalData){
 
 // Enumerate the MFT for all entries. Store the file reference numbers of any directories in the database.
 void Volume::BuildIndex(){
+    QElapsedTimer timer; //定义对象
+    timer.start();  //开始计时
+
     m_FileMapMutex.lock();
 
     ReleaseIndex(false);
@@ -92,45 +95,11 @@ void Volume::BuildIndex(){
         }
         med.StartFileReferenceNumber = * (USN *) pData;
     }
-    ReduceIndex();
+
     SerializationWrite();
     m_FileMapMutex.unlock();
-}
 
-// Delete ignored and useless index
-void Volume::ReduceIndex(){
-    SettingModel& settingModel = SettingModel::getInstance();
-    QStringList ignoredPathList = settingModel.getConfig(settingModel.Flag_IgnoredPath).toStringList();
-
-    for(FileMap::const_iterator it = m_FileMap.cbegin();it != m_FileMap.cend();){
-        QString path;
-        QString filename = it->getStrName();
-        // del ignored path
-        bool ifFound = false;
-        for(int i=0; i < ignoredPathList.length(); i++){
-            if(ifFound == false){
-                QString strQuery = ignoredPathList[i];
-                QStringList splitList = ignoredPathList[i].split('\\');
-                QString nameQuery = splitList[splitList.length()-1];
-                DWORD queryFilter = MakeFilter(&nameQuery);
-                if(it->filter == queryFilter && filename == nameQuery && GetPath(it->parentIndex, &path)){
-                    if(path + filename == strQuery) ifFound = true;
-                }
-            }
-        }
-        if(ifFound) it = (FileMap::const_iterator)m_FileMap.erase(it);
-        else ++it;
-    }
-
-    for(FileMap::const_iterator it = m_FileMap.cbegin();it != m_FileMap.cend();){
-        // del file with ignored path or useless
-        QString path;
-        if(GetPath(it->parentIndex, &path) == false){
-            it = (FileMap::const_iterator)m_FileMap.erase(it);
-            continue;
-        }
-        ++it;
-    }
+    qDebug() << m_drive  << "[计时信息] BuildIndex用时：" << timer.elapsed() << "milliseconds";
 }
 
 void Volume::UpdateIndex(){
@@ -231,14 +200,29 @@ bool Volume::AddFile(DWORDLONG index, wstring fileName, DWORDLONG parentIndex){
     return(TRUE);
 }
 
+char Volume::MatchStr(const QString &contain, const QString &query_lower)
+{
+    int i = 0;
+    foreach (QChar c, contain) {
+        if(query_lower[i] == c) ++i;
+        if(i >= query_lower.length()){
+            int rank = 20 - (contain.length() - query_lower.length());
+            return rank < 0 ? 0 : rank;
+        }
+    }
+    return -1;
+}
+
 // searching
 vector<SearchResultFile>* Volume::Find(QString strQuery){
     if(strQuery.length() == 0) return nullptr;
     if(m_FileMap.isEmpty()) SerializationRead();
 
+    QString strQuery_lower = strQuery.toLower();
+
     vector<SearchResultFile>* rgsrfResults = new vector<SearchResultFile>();
 
-    DWORD queryFilter = MakeFilter(&strQuery); //Calculate Filter value which are compared with the cached ones to skip many of them
+    DWORD queryFilter = MakeFilter(&strQuery_lower); //Calculate Filter value which are compared with the cached ones to skip many of them
 
     m_FileMapMutex.tryLock(1);
 
@@ -251,14 +235,13 @@ vector<SearchResultFile>* Volume::Find(QString strQuery){
 
         if((it->filter & queryFilter) == queryFilter){
             QString sz = it->getStrName();
-            QString szLower = sz.toLower();
-
-            if(szLower.contains(strQuery, Qt::CaseInsensitive)){
+            char rank = MatchStr(sz, strQuery_lower);
+            if(rank > 0){
                 SearchResultFile srf;
                 srf.path.reserve(MAX_PATH);
                 if(GetPath(it->parentIndex, &srf.path)){
                     srf.filename = sz;
-                    srf.rank = it->rank - (szLower.length() - strQuery.length());
+                    srf.rank = it->rank + rank;
                     rgsrfResults->insert(rgsrfResults->end(), srf);
                 }
             }
@@ -298,7 +281,7 @@ DWORD Volume::MakeFilter(QString* str)
     Explanation of the meaning of the single bits:
     0-25 a-z
     26 0-9
-    27 . space !#$&'()+,-~_
+    27 other ASCII
     28 not in ASCII
     */
     uint len = str->length();
@@ -306,20 +289,16 @@ DWORD Volume::MakeFilter(QString* str)
     uint32_t Address = 0;
 
     QString szlower = str->toLower();
+
     char c;
 
     for(uint i = 0; i != len; ++i)
     {
         c = szlower[i].toLatin1();
-        if(c > 96 && c < 123)             //a-z
-            Address |= (uint32_t)1 << ((uint32_t)c - (uint32_t)97);
-        else if(c >= L'0' && c <= '9')
-            Address |= (uint32_t)1 << 26; //0-9
-        else if(c == L'.' || c == L' ' || c == L'!' || c == L'#' || c == L'$' || c == L'&' || c == L'\'' || c == L'(' || c == L')' || c == L'+' || c == L',' || c == L'-' || c == L'~' || c == L'_')
-            Address |= (uint32_t)1 << 27; // . space !#$&'()+,-~_
-        else if(c == 0){
-            Address |= (uint32_t)1 << 28; // not in ASCII
-        }
+        if(c > 96 && c < 123) Address |= (uint32_t)1 << ((uint32_t)c - (uint32_t)97); //a-z
+        else if(c >= L'0' && c <= '9') Address |= (uint32_t)1 << 26; //0-9
+        else if(c == 0) Address |= (uint32_t)1 << 28; // not in ASCII
+        else Address |= (uint32_t)1 << 27; // other ASCII
     }
     return Address;
 }
