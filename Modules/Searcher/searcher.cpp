@@ -105,7 +105,4 @@ void Searcher::onSearchResultUpdate(const QString filename, const vector<SearchR
     if(m_lineEdit->text() != filename) return;
     m_searchResultList->update(filepaths);
     setFixedHeight(m_initialHeight + m_searchResultList->height());
-
-    if(filepaths.empty()) m_lineEdit->setStyleSheet("QLineEdit{font-size:28px; border:0px;}");
-    else m_lineEdit->setStyleSheet(m_lineEdit->styleSheet() + "QLineEdit{border-bottom:1px solid rgb(180,180,180);}");
 }

@@ -239,7 +239,6 @@ vector<SearchResultFile>* Volume::Find(QString strQuery){
     vector<SearchResultFile>* rgsrfResults = new vector<SearchResultFile>();
 
     DWORD queryFilter = MakeFilter(&strQuery); //Calculate Filter value which are compared with the cached ones to skip many of them
-    unsigned int foundNum = 0;
 
     m_FileMapMutex.tryLock(1);
 
@@ -262,8 +261,6 @@ vector<SearchResultFile>* Volume::Find(QString strQuery){
                     srf.rank = it->rank - (szLower.length() - strQuery.length());
                     rgsrfResults->insert(rgsrfResults->end(), srf);
                 }
-                foundNum++;
-                if(foundNum > 10000) break; // 当搜索数高于该值时停止搜索，以防用时过长。
             }
         }
     }
