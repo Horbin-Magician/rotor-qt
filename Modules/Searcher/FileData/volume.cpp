@@ -202,10 +202,10 @@ bool Volume::AddFile(DWORDLONG index, wstring fileName, DWORDLONG parentIndex){
 char Volume::MatchStr(const QString &contain, const QString &query_lower)
 {
     int i = 0;
-    foreach (QChar c, contain) {
+    foreach (QChar c, contain.toLower()) {
         if(query_lower[i] == c) ++i;
         if(i >= query_lower.length()){
-            int rank = 20 - (contain.length() - query_lower.length());
+            int rank = 10 - (contain.length() - query_lower.length());
             return rank < 0 ? 0 : rank;
         }
     }
@@ -239,7 +239,7 @@ vector<SearchResultFile>* Volume::Find(QString strQuery){
         if((it->filter & queryFilter) == queryFilter){
             QString sz = it->getStrName();
             char rank = MatchStr(sz, strQuery_lower);
-            if(rank > 0){
+            if(rank >= 0){
                 SearchResultFile srf;
                 srf.path.reserve(MAX_PATH);
                 if(GetPath(it->parentIndex, &srf.path)){
