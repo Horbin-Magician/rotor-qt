@@ -1,5 +1,7 @@
 <p align="center"><a href="https://github.com/Horbin-Magician/Rotor" target="_blank" rel="noopener noreferrer"><img width="100" src="./Images/logo.png" alt="Rotor logo"></a></p>
 
+<p align="center">I have refactored the application in Rust, please visit the latest repository <a href="https://github.com/Horbin-Magician/rotor" target="_blank" rel="noopener noreferrer">here</a></p>
+
 # Introduce
 
 Rotor is a "**fast**", "**low occupancy**" and **free** **tools box** running in windows. (Double quotes because it is far from the goal)
